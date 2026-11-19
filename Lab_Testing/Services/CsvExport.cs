@@ -3,13 +3,13 @@ using System.Text;
 
 namespace Lab_Testing;
 
-// Експорт таблиці результатів у CSV, який правильно відкривається в Excel:
+// Експорт таблиці результатів у CSV — запасний варіант для інших програм (основний — книга Excel, ExcelExport):
 //  - кодування UTF-8 з BOM — за цією позначкою Excel розуміє, що в файлі кирилиця;
 //  - роздільник стовпців і десятковий знак — з регіональних налаштувань Windows (ті самі бере Excel),
 //    тому на будь-якому комп'ютері дані розкладаються по стовпцях
 public static class CsvExport
 {
-    public static void Save(string path, IEnumerable<ResultEntry> entries)
+    public static void Save(string path, IEnumerable<ResultEntry> entries, BankSettings settings)
     {
         CultureInfo culture = CultureInfo.CurrentCulture;
         string separator = culture.TextInfo.ListSeparator;
@@ -17,7 +17,7 @@ public static class CsvExport
 
         List<string> header = new() { "№", "ПІБ", "Група", "Дата", "Час проходження", "Спроба" };
         header.AddRange(Enum.GetValues<QuestionType>().Select((t, i) => $"П{i + 1} {t.ToUkrainian()}"));
-        header.AddRange(new[] { "Разом", "З", "%", "Оцінка", "Рівень", "Файл справжній", "Файл" });
+        header.AddRange(new[] { "Разом", "З", "%", "Оцінка", "Рівень", "Файл справжній", "Примітка", "Файл" });
         AppendRow(sb, header, separator);
 
         int number = 1;
@@ -29,8 +29,8 @@ public static class CsvExport
 
             if (r == null)
             {
-                // Пошкоджений файл: даних немає, лише його назва і стан
-                row.AddRange(Enumerable.Repeat("", header.Count - 3));
+                // Пошкоджений файл: даних немає, лише його стан, примітка і назва
+                row.AddRange(Enumerable.Repeat("", header.Count - 4));
             }
             else
             {
@@ -47,25 +47,13 @@ public static class CsvExport
                 row.Add(Grading.Level(r.Grade));
             }
 
-            row.Add(StatusText(entry.Status));
+            row.Add(ResultChecks.StatusText(entry.Status));
+            row.Add(ResultChecks.Note(entry, settings));
             row.Add(Path.GetFileName(entry.FilePath));
             AppendRow(sb, row, separator);
         }
 
         File.WriteAllText(path, sb.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-    }
-
-    // Стан файлу словами (для таблиці і CSV)
-    public static string StatusText(ResultFileStatus status)
-    {
-        return status switch
-        {
-            ResultFileStatus.Valid => "так",
-            ResultFileStatus.DefaultKey => "не гарантовано — загальний ключ",
-            ResultFileStatus.UnknownKey => "не гарантовано — інший ключ",
-            ResultFileStatus.Modified => "НІ — змінено",
-            _ => "НІ — пошкоджено"
-        };
     }
 
     // Рядок CSV: значення з роздільником, лапками чи переносом беремо в лапки

@@ -142,7 +142,7 @@ public partial class TeacherForm : Form
         {
             // Пошкоджений файл: даних немає — порожні клітинки
             values.Add("—");
-            values.AddRange(Enumerable.Repeat<object>("", 11));
+            values.AddRange(Enumerable.Repeat<object>("", 11));   // група … оцінка
         }
         else
         {
@@ -158,12 +158,19 @@ public partial class TeacherForm : Form
             values.Add(r.Grade);
         }
 
-        values.Add(StatusText(entry.Status));
-        values.Add(fileName);
+        // Стан файлу і примітка: що не так з файлом (довга примітка переноситься на кілька рядків)
+        values.Add(ResultChecks.StatusText(entry.Status));
+        values.Add(ResultChecks.Note(entry, bank.Settings));
         int index = dgvResults.Rows.Add(values.ToArray());
 
         DataGridViewRow row = dgvResults.Rows[index];
         row.Tag = entry;
+
+        // Назва файлу — у підказці під курсором (у книзі Excel вона є окремим стовпцем)
+        foreach (DataGridViewCell cell in row.Cells)
+        {
+            cell.ToolTipText = "Файл: " + fileName;
+        }
 
         // Справжній — зелений напис; не вашим ключем — жовтий рядок; змінений — червоний; пошкоджений — сірий
         DataGridViewCell status = row.Cells[colStatus.Index];
@@ -191,34 +198,6 @@ public partial class TeacherForm : Form
                 status.Style.ForeColor = Theme.Warning;
                 break;
         }
-    }
-
-    // Стан файлу коротко (для таблиці)
-    public static string StatusText(ResultFileStatus status)
-    {
-        return status switch
-        {
-            ResultFileStatus.Valid => "✔ Справжній",
-            ResultFileStatus.DefaultKey => "⚠ Загальний ключ",
-            ResultFileStatus.UnknownKey => "⚠ Інший ключ",
-            ResultFileStatus.Modified => "✗ Змінено!",
-            _ => "⚠ Пошкоджено"
-        };
-    }
-
-    // Чому файлу не можна повністю довіряти (для попередження)
-    public static string WarningText(ResultFileStatus status)
-    {
-        return status switch
-        {
-            ResultFileStatus.DefaultKey =>
-                "Увага: файл підписано загальним ключем програми, а не вашим. Учень проходив тест без вашого банку " +
-                "(questions.dat), тому справжність файлу гарантувати не можна.",
-            ResultFileStatus.UnknownKey =>
-                "Увага: файл підписано ключем, якого на цьому комп'ютері немає (банк іншого вчителя або підробка). " +
-                "Якщо це ваш давній ключ — відновіть його у вікні «Банк питань і ключ».",
-            _ => "Увага: цей файл змінено після того, як програма його зберегла, — дані в ньому недостовірні."
-        };
     }
 
     // Підказка, кнопки і рядок стану залежать від того, чи є файли
@@ -274,10 +253,19 @@ public partial class TeacherForm : Form
             return;
         }
 
-        // Файл не підтверджено вашим ключем — попереджаємо, чому дані можуть бути недостовірними
+        // Файл не підтверджено вашим ключем — попереджаємо, чому дані можуть бути недостовірними,
+        // і показуємо, що саме в них не сходиться (якщо це вдалося визначити)
         if (entry.Status != ResultFileStatus.Valid)
         {
-            if (!Dialogs.Ask(this, WarningText(entry.Status) + "\n\nПоказати вміст усе одно?", "Файл не підтверджено", warning: true))
+            List<string> mismatches = ResultChecks.FindMismatches(entry.Result, bank.Settings);
+            string details = mismatches.Count > 0
+                ? "\n\nЩо не сходиться:\n• " + string.Join("\n• ", mismatches)
+                : entry.Status == ResultFileStatus.Modified
+                    ? "\n\nЧисла у файлі між собою сходяться — змінено щось інше (ПІБ, групу, дату чи тексти)."
+                    : "";
+
+            if (!Dialogs.Ask(this, ResultChecks.WarningText(entry.Status) + details + "\n\nПоказати вміст усе одно?",
+                    "Файл не підтверджено", warning: true))
             {
                 return;
             }
@@ -296,10 +284,11 @@ public partial class TeacherForm : Form
 
     // ===================== Експорт, очищення, пароль =====================
 
-    // Експорт у CSV — у тому порядку, як зараз відсортовано таблицю
+    // Експорт у книгу Excel (.xlsx) або CSV — у тому порядку, як зараз відсортовано таблицю
     private void BtnExport_Click(object? sender, EventArgs e)
     {
-        saveFileDialog.FileName = $"Результати_{DateTime.Now:yyyy-MM-dd}.csv";
+        saveFileDialog.FileName = $"Результати_{DateTime.Now:yyyy-MM-dd}.xlsx";
+        saveFileDialog.FilterIndex = 1;
 
         if (saveFileDialog.ShowDialog(this) != DialogResult.OK)
         {
@@ -312,7 +301,14 @@ public partial class TeacherForm : Form
 
         try
         {
-            CsvExport.Save(saveFileDialog.FileName, ordered);
+            if (Path.GetExtension(saveFileDialog.FileName).Equals(".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                CsvExport.Save(saveFileDialog.FileName, ordered, bank.Settings);
+            }
+            else
+            {
+                ExcelExport.Save(saveFileDialog.FileName, ordered, bank.Settings);
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

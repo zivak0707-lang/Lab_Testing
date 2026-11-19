@@ -73,7 +73,7 @@ public partial class ResultForm : Form
             ResultFileStatus.Modified => "Результат учня (файл змінено!)",
             _ => "Результат учня (справжність не підтверджено)"
         };
-        lblFileInfo.Text = TeacherForm.StatusText(status) + ": " + Path.GetFileName(filePath);
+        lblFileInfo.Text = ResultChecks.StatusText(status) + ": " + Path.GetFileName(filePath);
         lblFileInfo.ForeColor = valid ? Theme.Success : Theme.Error;
     }
 

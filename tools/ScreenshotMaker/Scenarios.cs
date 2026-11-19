@@ -207,6 +207,9 @@ internal class Scenarios
         teacher.LoadFiles(new[] { damaged });
         CheckEntries(teacher, valid: 3, defaultKey: 1, modified: 1, damaged: 1, "відкриття пошкодженого файлу");
 
+        // Контрольний знімок таблиці зі зразками (не для звіту: рисунок 44 — з вашими файлами)
+        await Ui.ShotToFileAsync(teacher, Path.Combine(Path.GetTempPath(), "Lab_Testing_зразки", "_таблиця_вчителя.png"));
+
         await ui.DialogShotAsync(teacher, () => Ui.Click(teacher, "btnExport"), 42, WindowCapture.IDCANCEL);
 
         // Подвійний клік по рядку зміненого файлу -> попередження («Ні» — не відкривати)
@@ -216,6 +219,7 @@ internal class Scenarios
         await ui.MessageShotAsync(teacher, () => Ui.DoubleClickCell(grid, modifiedRow), 43, Answer.No);
 
         CheckCsv(teacher);
+        ExcelCheck.Run(teacher.Entries, QuestionBank.Load(out _).Settings);
         teacher.Close();
     }
 
@@ -296,7 +300,7 @@ internal class Scenarios
     private static void CheckCsv(TeacherForm teacher)
     {
         string csv = Path.Combine(Path.GetTempPath(), "Lab_Testing_зразки", "Результати.csv");
-        CsvExport.Save(csv, teacher.Entries);
+        CsvExport.Save(csv, teacher.Entries, QuestionBank.Load(out _).Settings);
 
         byte[] bytes = File.ReadAllBytes(csv);
         string text = new System.Text.UTF8Encoding(false).GetString(bytes, 3, bytes.Length - 3);
@@ -306,7 +310,7 @@ internal class Scenarios
         bool bom = bytes.Length > 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
 
         if (!bom || lines.Length != teacher.Entries.Count + 1 || !lines[0].StartsWith("№" + separator + "ПІБ") ||
-            !text.Contains("Коваль Марія") || !text.Contains("НІ — змінено"))
+            !text.Contains("Коваль Марія") || !text.Contains("✗ Змінено!") || !text.Contains("оцінка у файлі 12"))
         {
             throw new InvalidOperationException("CSV для Excel сформовано неправильно");
         }
