@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Lab_Testing</RootNamespace>
+
+    <!-- Відомості про програму (видно у властивостях exe і у вікні «Про програму») -->
+    <Version>0.1.0</Version>
+    <Product>Тестування з програмування на C#</Product>
+    <Authors>Сергій Зівак</Authors>
+    <Company>Сергій Зівак, група 471</Company>
+    <Copyright>© 2026 Сергій Зівак</Copyright>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Банк питань вшивається всередину exe -->
+    <None Remove="Data\questions.json" />
+    <EmbeddedResource Include="Data\questions.json" LogicalName="Lab_Testing.questions.json" />
+  </ItemGroup>
+
+</Project>

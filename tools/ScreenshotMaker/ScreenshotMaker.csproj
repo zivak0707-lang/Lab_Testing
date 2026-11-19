@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Допоміжна утиліта для звіту: відкриває справжні форми Lab_Testing і знімає їхні вікна.
+       Не входить у рішення Lab_Testing.slnx і в exe для учнів.
+       Запуск з кореня репозиторію: див. docs/screenshots/README.md -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Lab_Testing\Lab_Testing.csproj" />
+  </ItemGroup>
+
+</Project>

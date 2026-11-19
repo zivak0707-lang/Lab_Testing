@@ -1,0 +1,9 @@
+# Результати збірки
+bin/
+obj/
+publish/
+
+# Службові файли Visual Studio
+.vs/
+*.user
+*.suo
