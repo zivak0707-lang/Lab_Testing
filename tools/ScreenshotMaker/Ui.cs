@@ -141,6 +141,11 @@ internal class Ui
         bmp.Save(path, ImageFormat.Png);
     }
 
+    public void SaveShot(Bitmap bmp, int number)
+    {
+        Save(bmp, number);
+    }
+
     private void Save(Bitmap bmp, int number)
     {
         Shot shot = ShotList.Get(number);

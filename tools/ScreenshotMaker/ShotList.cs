@@ -3,7 +3,7 @@ using System.Text;
 namespace ScreenshotMaker;
 
 // Один знімок: номер рисунка, файл, підпис, етап; Manual != null — знімок робиться вручну (інструкція)
-internal record Shot(int Number, string File, string Caption, int Stage, string? Manual = null);
+internal record Shot(int Number, string File, string Caption, int Stage, string? Manual = null, bool DragTest = false);
 
 // Перелік усіх знімків для звіту. Номери сталі: нові знімки лише додаються в кінець
 internal static class ShotList
@@ -28,9 +28,7 @@ internal static class ShotList
         new(8, "08_basket_done.png", "Питання типу «Кошик»: зайві картки перенесено в кошик", 2),
         new(9, "09_table_empty.png", "Питання типу «Таблиця відповідностей» до відповіді", 2),
         new(10, "10_table_done.png", "Питання типу «Таблиця відповідностей» з розставленими відповідями", 2),
-        new(11, "11_drag_in_progress.png", "Перетягування картки: зона під курсором підсвічена", 2,
-            "почніть перетягувати картку, наведіть її на кошик або клітинку (зона стане блакитною) і, не відпускаючи миші, " +
-            "натисніть PrtScr; вставте знімок у Paint і обріжте до вікна програми"),
+        new(11, "11_drag_in_progress.png", "Перетягування картки в кошик: зона під курсором підсвічена, курсор показує переміщення (Move)", 2, DragTest: true),
         new(12, "12_designer_testform.png", "Форма TestForm у конструкторі Visual Studio", 2,
             "відкрийте Forms\\TestForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
 
@@ -41,8 +39,7 @@ internal static class ShotList
         new(16, "16_gaps_done.png", "Питання типу «Слова в пропуски»: слова скопійовано в пропуски (break — двічі)", 3),
         new(17, "17_order_empty.png", "Питання типу «Порядок кроків» до відповіді", 3),
         new(18, "18_order_done.png", "Питання типу «Порядок кроків»: кроки алгоритму розставлено по порядку", 3),
-        new(19, "19_drag_copy.png", "Копіювання слова в пропуск: курсор зі знаком «+» (ефект Copy)", 3,
-            "почніть перетягувати слово з палітри в пропуск і, не відпускаючи миші, натисніть PrtScr; обріжте до вікна програми"),
+        new(19, "19_drag_copy.png", "Копіювання слова в пропуск: пропуск підсвічений, курсор зі знаком «+» (ефект Copy)", 3, DragTest: true),
     };
 
     public static Shot Get(int number)
@@ -70,7 +67,7 @@ internal static class ShotList
 
         foreach (Shot shot in All.Where(s => s.Stage <= maxStage))
         {
-            string how = shot.Manual == null ? "авто" : $"**✋ вручну**: {shot.Manual}";
+            string how = shot.Manual != null ? $"**✋ вручну**: {shot.Manual}" : shot.DragTest ? "авто (`--drag-test`, справжня миша)" : "авто";
 
             sb.AppendLine($"| {shot.Number} | `{shot.File}` | Рисунок {shot.Number} – {shot.Caption} | {shot.Stage} | {how} |");
         }

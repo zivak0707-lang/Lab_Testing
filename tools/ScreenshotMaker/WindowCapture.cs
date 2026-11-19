@@ -70,6 +70,80 @@ internal static class WindowCapture
         return full.Clone(crop, PixelFormat.Format24bppRgb);
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CURSORINFO
+    {
+        public int cbSize;
+        public int flags;
+        public IntPtr hCursor;
+        public Point ptScreenPos;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ICONINFO
+    {
+        public bool fIcon;
+        public int xHotspot;
+        public int yHotspot;
+        public IntPtr hbmMask;
+        public IntPtr hbmColor;
+    }
+
+    [DllImport("user32.dll")] private static extern bool GetCursorInfo(ref CURSORINFO info);
+    [DllImport("user32.dll")] private static extern bool GetIconInfo(IntPtr hIcon, out ICONINFO info);
+    [DllImport("user32.dll")] private static extern bool DrawIconEx(IntPtr hdc, int x, int y, IntPtr hIcon, int w, int h, int step, IntPtr brush, int flags);
+    [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr handle);
+
+    private const int DI_NORMAL = 0x0003;
+
+    // Знімок вікна разом із поточним курсором миші (під час перетягування це курсор Move або Copy «+»)
+    public static Bitmap CaptureWithCursor(IntPtr hwnd)
+    {
+        Bitmap bmp = Capture(hwnd);
+
+        if (DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out RECT frame, Marshal.SizeOf<RECT>()) != 0)
+        {
+            GetWindowRect(hwnd, out frame);
+        }
+
+        CURSORINFO cursor = new() { cbSize = Marshal.SizeOf<CURSORINFO>() };
+
+        if (!GetCursorInfo(ref cursor) || cursor.hCursor == IntPtr.Zero)
+        {
+            return bmp;
+        }
+
+        GetIconInfo(cursor.hCursor, out ICONINFO icon);
+        int x = cursor.ptScreenPos.X - icon.xHotspot - frame.Left;
+        int y = cursor.ptScreenPos.Y - icon.yHotspot - frame.Top;
+
+        using (Graphics g = Graphics.FromImage(bmp))
+        {
+            IntPtr hdc = g.GetHdc();
+
+            try
+            {
+                DrawIconEx(hdc, x, y, cursor.hCursor, 0, 0, 0, IntPtr.Zero, DI_NORMAL);
+            }
+            finally
+            {
+                g.ReleaseHdc(hdc);
+            }
+        }
+
+        if (icon.hbmMask != IntPtr.Zero)
+        {
+            DeleteObject(icon.hbmMask);
+        }
+
+        if (icon.hbmColor != IntPtr.Zero)
+        {
+            DeleteObject(icon.hbmColor);
+        }
+
+        return bmp;
+    }
+
     // Видимі діалогові вікна (#32770) поточного потоку: MessageBox, діалоги відкриття/збереження файлів
     public static List<IntPtr> FindDialogs()
     {

@@ -5,6 +5,7 @@ namespace ScreenshotMaker;
 
 // Самоперевірка справжнього Drag-and-Drop: курсор миші рухається системними подіями (як рука користувача),
 // тож спрацьовує весь ланцюжок DoDragDrop -> DragEnter -> DragOver -> DragDrop.
+// Заодно робить знімки 11 і 19 — вікно посеред перетягування разом із курсором.
 // Запуск: dotnet run --project tools/ScreenshotMaker -- --drag-test  (курсор рухатиметься кілька секунд)
 internal static class DragSelfTest
 {
@@ -16,7 +17,7 @@ internal static class DragSelfTest
     private const uint MOUSEEVENTF_LEFTDOWN = 0x02;
     private const uint MOUSEEVENTF_LEFTUP = 0x04;
 
-    public static async Task RunAsync(TestSession session)
+    public static async Task RunAsync(TestSession session, Ui ui)
     {
         Console.WriteLine("Самоперевірка Drag-and-Drop справжньою мишею:");
         GetCursorPos(out Point originalCursor);
@@ -27,22 +28,25 @@ internal static class DragSelfTest
 
         try
         {
-            // --- «Кошик»: картку зі слайда в порожній кошик, потім ще одну — прямо на картку в кошику
+            // --- «Кошик»: зайву картку в порожній кошик (знімок 11 посеред перетягування),
+            //     потім ще одну — прямо на картку в кошику, і одну назад на слайд
             form.ShowQuestion(0);
             await Task.Delay(300);
             QuestionView basketView = form.CurrentView;
             DropZone basket = basketView.GetZone("basket");
-            CardLabel first = basketView.GetZone("slide").Cards[0];
-            CardLabel second = basketView.GetZone("slide").Cards[1];
+            DropZone slide = basketView.GetZone("slide");
+            string extraText = basketView.Question.Items.First(i => !i.Keep).Text;
+            CardLabel first = slide.Cards.First(c => c.Value == extraText);
+            CardLabel second = slide.Cards.First(c => c != first);
 
-            await DragAsync(first, Center(basket));
+            await DragAsync(first, Center(basket), form, ui, shotNumber: 11);
             Expect(first.Parent == basket, "картка перенеслася в порожній кошик");
 
             await DragAsync(second, Center(first));
             Expect(second.Parent == basket, "картка, кинута на іншу картку в кошику, теж потрапила в кошик");
 
-            await DragAsync(first, Center(basketView.GetZone("slide")));
-            Expect(first.Parent == basketView.GetZone("slide"), "картку повернуто з кошика на слайд");
+            await DragAsync(second, Center(slide));
+            Expect(second.Parent == slide, "картку повернуто з кошика на слайд");
 
             // --- «Таблиця»: картку в клітинку, потім іншу картку на зайняту клітинку (стара повертається)
             form.ShowQuestion(1);
@@ -71,30 +75,35 @@ internal static class DragSelfTest
             await DragAsync(c2, Center(c1));
             Expect(c1.Parent == row && c2.Parent == row, "два номерки лежать в одному рядку категорії");
 
-            // --- «Пропуски»: копіювання (Copy) слова в два пропуски, переміщення і видалення
+            // --- «Пропуски»: слово, яке в тексті потрібне двічі, копіюємо (Copy) в обидва пропуски
+            //     (знімок 19 — під час другого копіювання), потім переміщення і видалення
             form.ShowQuestion(3);
             await Task.Delay(300);
             QuestionView gapsView = form.CurrentView;
             DropZone words = gapsView.GetZone("palette");
-            DropZone gap0 = gapsView.GetZone("gap:0");
-            DropZone gap1 = gapsView.GetZone("gap:1");
-            CardLabel template = words.Cards[0];
+            List<string> answers = gapsView.Question.GetGapAnswers();
+            string repeated = answers.GroupBy(w => w).First(g => g.Count() > 1).Key;
+            int firstIndex = answers.IndexOf(repeated);
+            int secondIndex = answers.LastIndexOf(repeated);
+            DropZone gapA = gapsView.GetZone("gap:" + firstIndex);
+            DropZone gapB = gapsView.GetZone("gap:" + secondIndex);
+            CardLabel template = words.Cards.First(c => c.Value == repeated);
             int wordCount = words.Cards.Count;
 
-            await DragAsync(template, Center(gap0));
-            Expect(gap0.Cards.Count == 1 && gap0.Cards[0].Value == template.Value && words.Cards.Count == wordCount,
+            await DragAsync(template, Center(gapA));
+            Expect(gapA.Cards.Count == 1 && gapA.Cards[0].Value == repeated && words.Cards.Count == wordCount,
                 "слово скопійовано в пропуск (Copy), у палітрі воно лишилося");
 
-            await DragAsync(template, Center(gap1));
-            Expect(gap1.Cards.Count == 1 && gap1.Cards[0].Value == template.Value, "те саме слово вставлено в другий пропуск");
+            await DragAsync(template, Center(gapB), form, ui, shotNumber: 19);
+            Expect(gapB.Cards.Count == 1 && gapB.Cards[0].Value == repeated, "те саме слово вставлено в другий пропуск");
 
-            CardLabel copy = gap1.Cards[0];
+            CardLabel copy = gapB.Cards[0];
             await DragAsync(copy, Center(words));
-            Expect(gap1.Cards.Count == 0 && !gapsView.Cards.Contains(copy), "слово перетягнуто з пропуску в палітру — пропуск очистився");
+            Expect(gapB.Cards.Count == 0 && !gapsView.Cards.Contains(copy), "слово перетягнуто з пропуску в палітру — пропуск очистився");
 
-            CardLabel moved = gap0.Cards[0];
-            await DragAsync(moved, Center(gap1));
-            Expect(gap0.Cards.Count == 0 && moved.Parent == gap1, "слово переміщено з одного пропуску в інший (Move)");
+            CardLabel moved = gapA.Cards[0];
+            await DragAsync(moved, Center(gapB));
+            Expect(gapA.Cards.Count == 0 && moved.Parent == gapB, "слово переміщено з одного пропуску в інший (Move)");
 
             // --- «Порядок кроків»: заміна і обмін місцями
             form.ShowQuestion(4);
@@ -118,14 +127,16 @@ internal static class DragSelfTest
         {
             SetCursorPos(originalCursor.X, originalCursor.Y);
             form.TopMost = false;
-            await new Ui("").DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
+            await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
         }
     }
 
-    // Перетягує картку мишею в точку target (екранні координати)
-    private static async Task DragAsync(CardLabel card, Point target)
+    // Перетягує картку мишею в точку target (екранні координати).
+    // Якщо задано shotNumber — перед тим як відпустити кнопку, знімає вікно разом із курсором
+    private static async Task DragAsync(CardLabel card, Point target, Form? form = null, Ui? ui = null, int? shotNumber = null)
     {
         Point start = Center(card);
+        IntPtr formHandle = form?.Handle ?? IntPtr.Zero;
 
         // Безпека: тиснемо кнопку, лише якщо під курсором саме наша картка
         if (WindowFromPoint(start) != card.Handle)
@@ -150,6 +161,15 @@ internal static class DragSelfTest
             }
 
             Thread.Sleep(250);
+
+            // Кнопку ще не відпущено: зона підсвічена, курсор показує ефект Move або Copy
+            if (shotNumber != null && ui != null)
+            {
+                Thread.Sleep(300);
+                using Bitmap bmp = WindowCapture.CaptureWithCursor(formHandle);
+                ui.SaveShot(bmp, shotNumber.Value);
+            }
+
             mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
         });
 

@@ -18,7 +18,7 @@ internal class Scenarios
     // Самоперевірка Drag-and-Drop справжньою мишею (замість знімків)
     public Task RunDragTestAsync()
     {
-        return DragSelfTest.RunAsync(CreateSession(TestMode.Training, MainQuestionIds));
+        return DragSelfTest.RunAsync(CreateSession(TestMode.Training, MainQuestionIds), ui);
     }
 
     // Питання, які видно на знімках для звіту: кошик №1, таблиця №6, номерки №9, пропуски №13, кроки №20
