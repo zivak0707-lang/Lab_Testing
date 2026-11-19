@@ -51,13 +51,13 @@ public class BasketView : QuestionView
             else
             {
                 removedWrong++;
-                result.Mistakes.Add($"«{card.Value}» прибрано в кошик, але ця картка потрібна — вона мала лишитися на слайді");
+                result.Mistakes.Add($"{Quote(card.Value)} прибрано в кошик, але ця картка потрібна — вона мала лишитися на слайді");
             }
         }
 
         foreach (CardLabel card in slide.Cards.Where(c => extras.Contains(c.Value)))
         {
-            result.Mistakes.Add($"«{card.Value}» залишилося на слайді, хоча це зайва картка");
+            result.Mistakes.Add($"{Quote(card.Value)} залишилося на слайді, хоча це зайва картка");
         }
 
         result.Score = Grading.Points(removedCorrect - removedWrong, extras.Count);

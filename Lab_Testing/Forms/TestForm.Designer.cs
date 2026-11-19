@@ -37,12 +37,15 @@ namespace Lab_Testing
             lblQuestionInfo = new Label();
             pnlContent = new Panel();
             pnlTheory = new Panel();
-            tlpTheory = new TableLayoutPanel();
-            lblTheoryTitle = new Label();
-            lblTheory = new Label();
-            lblCheckTitle = new Label();
+            tabInfo = new TabControl();
+            tabTheory = new TabPage();
+            rtbTheory = new RichTextBox();
+            tabExplanation = new TabPage();
+            rtbExplanation = new RichTextBox();
+            pnlCheckGap = new Panel();
+            pnlCheck = new Panel();
+            lblCheckHint = new Label();
             lblCheckSummary = new Label();
-            lblExplanation = new Label();
             pnlBottom = new Panel();
             btnReset = new Button();
             btnCheck = new Button();
@@ -52,7 +55,10 @@ namespace Lab_Testing
             pnlTop.SuspendLayout();
             pnlQuestionHeader.SuspendLayout();
             pnlTheory.SuspendLayout();
-            tlpTheory.SuspendLayout();
+            tabInfo.SuspendLayout();
+            tabTheory.SuspendLayout();
+            tabExplanation.SuspendLayout();
+            pnlCheck.SuspendLayout();
             pnlBottom.SuspendLayout();
             SuspendLayout();
             //
@@ -65,7 +71,7 @@ namespace Lab_Testing
             pnlTop.Dock = DockStyle.Top;
             pnlTop.Location = new Point(0, 0);
             pnlTop.Name = "pnlTop";
-            pnlTop.Size = new Size(1100, 56);
+            pnlTop.Size = new Size(1180, 56);
             pnlTop.TabIndex = 0;
             //
             // lblTimer
@@ -73,7 +79,7 @@ namespace Lab_Testing
             lblTimer.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             lblTimer.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
             lblTimer.ForeColor = Color.White;
-            lblTimer.Location = new Point(688, 12);
+            lblTimer.Location = new Point(768, 12);
             lblTimer.Name = "lblTimer";
             lblTimer.Size = new Size(160, 32);
             lblTimer.TabIndex = 2;
@@ -84,7 +90,7 @@ namespace Lab_Testing
             // flpSteps
             //
             flpSteps.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            flpSteps.Location = new Point(864, 9);
+            flpSteps.Location = new Point(944, 9);
             flpSteps.Name = "flpSteps";
             flpSteps.Size = new Size(222, 40);
             flpSteps.TabIndex = 1;
@@ -110,7 +116,7 @@ namespace Lab_Testing
             pnlQuestionHeader.Location = new Point(0, 56);
             pnlQuestionHeader.Name = "pnlQuestionHeader";
             pnlQuestionHeader.Padding = new Padding(20, 10, 20, 6);
-            pnlQuestionHeader.Size = new Size(1100, 88);
+            pnlQuestionHeader.Size = new Size(1180, 88);
             pnlQuestionHeader.TabIndex = 1;
             //
             // lblTask
@@ -120,7 +126,7 @@ namespace Lab_Testing
             lblTask.ForeColor = Color.FromArgb(25, 35, 48);
             lblTask.Location = new Point(20, 34);
             lblTask.Name = "lblTask";
-            lblTask.Size = new Size(1060, 48);
+            lblTask.Size = new Size(1140, 48);
             lblTask.TabIndex = 1;
             lblTask.Text = "Текст завдання";
             lblTask.UseMnemonic = false;
@@ -132,7 +138,7 @@ namespace Lab_Testing
             lblQuestionInfo.ForeColor = Color.FromArgb(46, 117, 182);
             lblQuestionInfo.Location = new Point(20, 10);
             lblQuestionInfo.Name = "lblQuestionInfo";
-            lblQuestionInfo.Size = new Size(1060, 24);
+            lblQuestionInfo.Size = new Size(1140, 24);
             lblQuestionInfo.TabIndex = 0;
             lblQuestionInfo.Text = "Питання 1 з 5  ·  тип  ·  тема";
             lblQuestionInfo.UseMnemonic = false;
@@ -144,108 +150,130 @@ namespace Lab_Testing
             pnlContent.Location = new Point(0, 144);
             pnlContent.Name = "pnlContent";
             pnlContent.Padding = new Padding(14, 8, 14, 8);
-            pnlContent.Size = new Size(810, 472);
+            pnlContent.Size = new Size(820, 472);
             pnlContent.TabIndex = 2;
             //
             // pnlTheory
             //
-            pnlTheory.AutoScroll = true;
             pnlTheory.BackColor = Color.FromArgb(255, 249, 232);
-            pnlTheory.Controls.Add(tlpTheory);
+            pnlTheory.Controls.Add(tabInfo);
+            pnlTheory.Controls.Add(pnlCheckGap);
+            pnlTheory.Controls.Add(pnlCheck);
             pnlTheory.Dock = DockStyle.Right;
-            pnlTheory.Location = new Point(810, 144);
+            pnlTheory.Location = new Point(820, 144);
             pnlTheory.Name = "pnlTheory";
-            pnlTheory.Padding = new Padding(14, 12, 14, 12);
-            pnlTheory.Size = new Size(290, 472);
+            pnlTheory.Padding = new Padding(8);
+            pnlTheory.Size = new Size(360, 472);
             pnlTheory.TabIndex = 3;
             //
-            // tlpTheory
+            // tabInfo
             //
-            tlpTheory.AutoSize = true;
-            tlpTheory.ColumnCount = 1;
-            tlpTheory.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tlpTheory.Controls.Add(lblTheoryTitle, 0, 0);
-            tlpTheory.Controls.Add(lblTheory, 0, 1);
-            tlpTheory.Controls.Add(lblCheckTitle, 0, 2);
-            tlpTheory.Controls.Add(lblCheckSummary, 0, 3);
-            tlpTheory.Controls.Add(lblExplanation, 0, 4);
-            tlpTheory.Dock = DockStyle.Top;
-            tlpTheory.Location = new Point(14, 12);
-            tlpTheory.Name = "tlpTheory";
-            tlpTheory.RowCount = 5;
-            tlpTheory.RowStyles.Add(new RowStyle());
-            tlpTheory.RowStyles.Add(new RowStyle());
-            tlpTheory.RowStyles.Add(new RowStyle());
-            tlpTheory.RowStyles.Add(new RowStyle());
-            tlpTheory.RowStyles.Add(new RowStyle());
-            tlpTheory.Size = new Size(262, 180);
-            tlpTheory.TabIndex = 0;
+            tabInfo.Controls.Add(tabTheory);
+            tabInfo.Controls.Add(tabExplanation);
+            tabInfo.Dock = DockStyle.Fill;
+            tabInfo.Location = new Point(8, 116);
+            tabInfo.Name = "tabInfo";
+            tabInfo.SelectedIndex = 0;
+            tabInfo.Size = new Size(344, 364);
+            tabInfo.TabIndex = 2;
             //
-            // lblTheoryTitle
+            // tabTheory
             //
-            lblTheoryTitle.AutoSize = true;
-            lblTheoryTitle.Dock = DockStyle.Fill;
-            lblTheoryTitle.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
-            lblTheoryTitle.ForeColor = Color.FromArgb(31, 78, 121);
-            lblTheoryTitle.Location = new Point(3, 0);
-            lblTheoryTitle.Margin = new Padding(3, 0, 3, 6);
-            lblTheoryTitle.Name = "lblTheoryTitle";
-            lblTheoryTitle.Size = new Size(256, 19);
-            lblTheoryTitle.TabIndex = 0;
-            lblTheoryTitle.Text = "Теорія";
+            tabTheory.BackColor = Color.FromArgb(255, 249, 232);
+            tabTheory.Controls.Add(rtbTheory);
+            tabTheory.Location = new Point(4, 26);
+            tabTheory.Name = "tabTheory";
+            tabTheory.Padding = new Padding(6);
+            tabTheory.Size = new Size(336, 334);
+            tabTheory.TabIndex = 0;
+            tabTheory.Text = "Теорія";
             //
-            // lblTheory
+            // rtbTheory
             //
-            lblTheory.AutoSize = true;
-            lblTheory.Dock = DockStyle.Fill;
-            lblTheory.Location = new Point(3, 25);
-            lblTheory.Margin = new Padding(3, 0, 3, 14);
-            lblTheory.Name = "lblTheory";
-            lblTheory.Size = new Size(256, 17);
-            lblTheory.TabIndex = 1;
-            lblTheory.Text = "Текст теорії";
-            lblTheory.UseMnemonic = false;
+            rtbTheory.BackColor = Color.FromArgb(255, 249, 232);
+            rtbTheory.BorderStyle = BorderStyle.None;
+            rtbTheory.DetectUrls = false;
+            rtbTheory.Dock = DockStyle.Fill;
+            rtbTheory.ForeColor = Color.FromArgb(25, 35, 48);
+            rtbTheory.Location = new Point(6, 6);
+            rtbTheory.Name = "rtbTheory";
+            rtbTheory.ReadOnly = true;
+            rtbTheory.ScrollBars = RichTextBoxScrollBars.Vertical;
+            rtbTheory.Size = new Size(324, 322);
+            rtbTheory.TabIndex = 0;
+            rtbTheory.TabStop = false;
+            rtbTheory.Text = "";
             //
-            // lblCheckTitle
+            // tabExplanation
             //
-            lblCheckTitle.AutoSize = true;
-            lblCheckTitle.Dock = DockStyle.Fill;
-            lblCheckTitle.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
-            lblCheckTitle.ForeColor = Color.FromArgb(31, 78, 121);
-            lblCheckTitle.Location = new Point(3, 56);
-            lblCheckTitle.Margin = new Padding(3, 0, 3, 6);
-            lblCheckTitle.Name = "lblCheckTitle";
-            lblCheckTitle.Size = new Size(256, 19);
-            lblCheckTitle.TabIndex = 2;
-            lblCheckTitle.Text = "Результат перевірки";
-            lblCheckTitle.Visible = false;
+            tabExplanation.BackColor = Color.FromArgb(255, 249, 232);
+            tabExplanation.Controls.Add(rtbExplanation);
+            tabExplanation.Location = new Point(4, 26);
+            tabExplanation.Name = "tabExplanation";
+            tabExplanation.Padding = new Padding(6);
+            tabExplanation.Size = new Size(336, 334);
+            tabExplanation.TabIndex = 1;
+            tabExplanation.Text = "Пояснення";
+            //
+            // rtbExplanation
+            //
+            rtbExplanation.BackColor = Color.FromArgb(255, 249, 232);
+            rtbExplanation.BorderStyle = BorderStyle.None;
+            rtbExplanation.DetectUrls = false;
+            rtbExplanation.Dock = DockStyle.Fill;
+            rtbExplanation.ForeColor = Color.FromArgb(25, 35, 48);
+            rtbExplanation.Location = new Point(6, 6);
+            rtbExplanation.Name = "rtbExplanation";
+            rtbExplanation.ReadOnly = true;
+            rtbExplanation.ScrollBars = RichTextBoxScrollBars.Vertical;
+            rtbExplanation.Size = new Size(324, 322);
+            rtbExplanation.TabIndex = 0;
+            rtbExplanation.TabStop = false;
+            rtbExplanation.Text = "";
+            //
+            // pnlCheckGap
+            //
+            pnlCheckGap.Dock = DockStyle.Top;
+            pnlCheckGap.Location = new Point(8, 108);
+            pnlCheckGap.Name = "pnlCheckGap";
+            pnlCheckGap.Size = new Size(344, 8);
+            pnlCheckGap.TabIndex = 1;
+            pnlCheckGap.Visible = false;
+            //
+            // pnlCheck
+            //
+            pnlCheck.BackColor = Color.FromArgb(226, 243, 228);
+            pnlCheck.Controls.Add(lblCheckHint);
+            pnlCheck.Controls.Add(lblCheckSummary);
+            pnlCheck.Dock = DockStyle.Top;
+            pnlCheck.Location = new Point(8, 8);
+            pnlCheck.Name = "pnlCheck";
+            pnlCheck.Padding = new Padding(10, 8, 10, 6);
+            pnlCheck.Size = new Size(344, 100);
+            pnlCheck.TabIndex = 0;
+            pnlCheck.Visible = false;
+            //
+            // lblCheckHint
+            //
+            lblCheckHint.Dock = DockStyle.Fill;
+            lblCheckHint.Font = new Font("Segoe UI", 9.5F);
+            lblCheckHint.ForeColor = Color.FromArgb(60, 72, 86);
+            lblCheckHint.Location = new Point(10, 34);
+            lblCheckHint.Name = "lblCheckHint";
+            lblCheckHint.Size = new Size(324, 60);
+            lblCheckHint.TabIndex = 1;
+            lblCheckHint.Text = "Підказка після перевірки";
             //
             // lblCheckSummary
             //
-            lblCheckSummary.AutoSize = true;
-            lblCheckSummary.Dock = DockStyle.Fill;
-            lblCheckSummary.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblCheckSummary.Location = new Point(3, 81);
-            lblCheckSummary.Margin = new Padding(3, 0, 3, 8);
+            lblCheckSummary.Dock = DockStyle.Top;
+            lblCheckSummary.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
+            lblCheckSummary.Location = new Point(10, 8);
             lblCheckSummary.Name = "lblCheckSummary";
-            lblCheckSummary.Size = new Size(256, 19);
-            lblCheckSummary.TabIndex = 3;
-            lblCheckSummary.Text = "Підсумок перевірки";
+            lblCheckSummary.Size = new Size(324, 26);
+            lblCheckSummary.TabIndex = 0;
+            lblCheckSummary.Text = "Результат перевірки";
             lblCheckSummary.UseMnemonic = false;
-            lblCheckSummary.Visible = false;
-            //
-            // lblExplanation
-            //
-            lblExplanation.AutoSize = true;
-            lblExplanation.Dock = DockStyle.Fill;
-            lblExplanation.Location = new Point(3, 108);
-            lblExplanation.Margin = new Padding(3, 0, 3, 0);
-            lblExplanation.Name = "lblExplanation";
-            lblExplanation.Size = new Size(256, 17);
-            lblExplanation.TabIndex = 4;
-            lblExplanation.Text = "Пояснення";
-            lblExplanation.UseMnemonic = false;
-            lblExplanation.Visible = false;
             //
             // pnlBottom
             //
@@ -258,7 +286,7 @@ namespace Lab_Testing
             pnlBottom.Dock = DockStyle.Bottom;
             pnlBottom.Location = new Point(0, 616);
             pnlBottom.Name = "pnlBottom";
-            pnlBottom.Size = new Size(1100, 64);
+            pnlBottom.Size = new Size(1180, 64);
             pnlBottom.TabIndex = 4;
             //
             // btnReset
@@ -296,7 +324,7 @@ namespace Lab_Testing
             btnFinish.FlatStyle = FlatStyle.Flat;
             btnFinish.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
             btnFinish.ForeColor = Color.White;
-            btnFinish.Location = new Point(910, 14);
+            btnFinish.Location = new Point(990, 14);
             btnFinish.Name = "btnFinish";
             btnFinish.Size = new Size(170, 36);
             btnFinish.TabIndex = 4;
@@ -329,14 +357,14 @@ namespace Lab_Testing
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(245, 247, 250);
-            ClientSize = new Size(1100, 680);
+            ClientSize = new Size(1180, 680);
             Controls.Add(pnlContent);
             Controls.Add(pnlTheory);
             Controls.Add(pnlQuestionHeader);
             Controls.Add(pnlBottom);
             Controls.Add(pnlTop);
             Font = new Font("Segoe UI", 10F);
-            MinimumSize = new Size(1000, 640);
+            MinimumSize = new Size(1060, 640);
             Name = "TestForm";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Тестування з програмування на C#";
@@ -346,9 +374,10 @@ namespace Lab_Testing
             pnlTop.PerformLayout();
             pnlQuestionHeader.ResumeLayout(false);
             pnlTheory.ResumeLayout(false);
-            pnlTheory.PerformLayout();
-            tlpTheory.ResumeLayout(false);
-            tlpTheory.PerformLayout();
+            tabInfo.ResumeLayout(false);
+            tabTheory.ResumeLayout(false);
+            tabExplanation.ResumeLayout(false);
+            pnlCheck.ResumeLayout(false);
             pnlBottom.ResumeLayout(false);
             ResumeLayout(false);
         }
@@ -364,12 +393,15 @@ namespace Lab_Testing
         private Label lblTask;
         private Panel pnlContent;
         private Panel pnlTheory;
-        private TableLayoutPanel tlpTheory;
-        private Label lblTheoryTitle;
-        private Label lblTheory;
-        private Label lblCheckTitle;
+        private Panel pnlCheck;
         private Label lblCheckSummary;
-        private Label lblExplanation;
+        private Label lblCheckHint;
+        private Panel pnlCheckGap;
+        private TabControl tabInfo;
+        private TabPage tabTheory;
+        private RichTextBox rtbTheory;
+        private TabPage tabExplanation;
+        private RichTextBox rtbExplanation;
         private Panel pnlBottom;
         private Button btnPrev;
         private Button btnNext;

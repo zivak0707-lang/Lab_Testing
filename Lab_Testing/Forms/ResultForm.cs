@@ -20,6 +20,10 @@ public partial class ResultForm : Form
         lblScore.Text = $"{Grading.Format(result.TotalScore)} з {Grading.Format(result.MaxScore)} балів  ·  " +
                         $"{Grading.Format(result.Percent)} %";
 
+        lblFileInfo.Text = result.Mode == TestMode.Training
+            ? "Режим «Навчання»: результат не зберігається у файл."
+            : "";
+
         FillTable(result);
 
         if (showReview)
@@ -28,7 +32,8 @@ public partial class ResultForm : Form
         }
         else
         {
-            rtbReview.Text = "Розбір помилок після контрольної вимкнено викладачем. Ваші бали та оцінку показано вище.";
+            RichTextFormatter.ShowHint(rtbReview,
+                "Розбір помилок після контрольної вимкнено викладачем. Ваші бали та оцінку показано вище.");
         }
 
         // Таблиця сама виділяє перший рядок, коли отримує фокус, — знімаємо виділення
@@ -65,42 +70,44 @@ public partial class ResultForm : Form
         dgvQuestions.ClearSelection();
     }
 
-    // Розбір: для кожного питання — бали, помилки і пояснення
+    // Розбір: для кожного питання — бали, помилки і пояснення (з виділеним кодом)
     private void FillReview(TestResult result)
     {
+        const int indent = 18;   // відступ вмісту під заголовком питання
+        rtbReview.Clear();
+
         for (int i = 0; i < result.Questions.Count; i++)
         {
             QuestionResult q = result.Questions[i];
 
-            Append($"Питання {i + 1}. {q.Type.ToUkrainian()} — «{q.Title}»: " +
-                   $"{Grading.Format(q.Score)} з {Grading.Format(q.MaxScore)} балів\n", Theme.Primary, bold: true);
+            if (i > 0)
+            {
+                RichTextFormatter.AppendGap(rtbReview);
+                RichTextFormatter.AppendGap(rtbReview);
+            }
+
+            RichTextFormatter.AppendParagraph(rtbReview,
+                $"Питання {i + 1}. {q.Type.ToUkrainian()} — «{q.Title}»: " +
+                $"{Grading.Format(q.Score)} з {Grading.Format(q.MaxScore)} балів",
+                Theme.Primary, bold: true);
 
             if (q.Mistakes.Count == 0)
             {
-                Append("    ✔ Усе правильно\n", Theme.Success, bold: false);
+                RichTextFormatter.AppendParagraph(rtbReview, "✔ Усе правильно", Theme.Success, indent: indent);
             }
             else
             {
                 foreach (string mistake in q.Mistakes)
                 {
-                    Append($"    ✗ {mistake}\n", Theme.Error, bold: false);
+                    RichTextFormatter.AppendParagraph(rtbReview, "✗ " + mistake, Theme.Error, indent: indent, hanging: 14);
                 }
             }
 
-            Append($"    Пояснення: {q.Explanation}\n\n", Theme.MutedText, bold: false);
+            RichTextFormatter.AppendMarkup(rtbReview, q.Explanation, indent);
         }
 
         rtbReview.SelectionStart = 0;   // прокрутити на початок
-    }
-
-    // Додає в розбір текст заданого кольору
-    private void Append(string text, Color color, bool bold)
-    {
-        rtbReview.SelectionStart = rtbReview.TextLength;
-        rtbReview.SelectionLength = 0;
-        rtbReview.SelectionColor = color;
-        rtbReview.SelectionFont = bold ? boldFont : rtbReview.Font;
-        rtbReview.AppendText(text);
+        rtbReview.ScrollToCaret();
     }
 
     private static Color ScoreColor(QuestionResult q)

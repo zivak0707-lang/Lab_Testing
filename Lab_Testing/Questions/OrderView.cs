@@ -12,7 +12,7 @@ public class OrderView : QuestionView
         palette.Padding = new Padding(S(8));
         palette.FlowDirection = FlowDirection.TopDown;   // кроки один під одним
         palette.WrapContents = false;
-        palette.AutoScroll = true;
+        palette.AutoScroll = false;  // до 8 кроків вміщуються без прокрутки
         HomeZone = palette;
 
         foreach (string step in Shuffle(question.Steps))
@@ -86,7 +86,7 @@ public class OrderView : QuestionView
 
             if (card == null)
             {
-                result.Mistakes.Add($"Крок {i + 1}: клітинку не заповнено (правильно: «{expected}»)");
+                result.Mistakes.Add($"Крок {i + 1}: клітинку не заповнено (правильно: {Quote(expected)})");
             }
             else if (card.Value == expected)
             {
@@ -96,7 +96,7 @@ public class OrderView : QuestionView
             else
             {
                 Mark(card, false, highlight);
-                result.Mistakes.Add($"Крок {i + 1}: стоїть «{card.Value}», правильно: «{expected}»");
+                result.Mistakes.Add($"Крок {i + 1}: стоїть {Quote(card.Value)}, правильно: {Quote(expected)}");
             }
         }
 

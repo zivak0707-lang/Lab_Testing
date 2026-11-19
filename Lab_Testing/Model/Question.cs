@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace Lab_Testing;
@@ -40,8 +42,14 @@ public class Question
     public string Topic { get; set; } = "";        // тема: «Типи даних», «Оператори» ...
     public string Title { get; set; } = "";        // коротка назва (для таблиць результатів)
     public string Task { get; set; } = "";         // текст завдання для учня
-    public string Theory { get; set; } = "";       // коротка теорія (режим «Навчання»)
-    public string Explanation { get; set; } = "";  // пояснення правильної відповіді
+
+    // Теорія (режим «Навчання») і пояснення правильної відповіді.
+    // У файлі банку їх зручно писати списком рядків із розміткою (див. RichTextFormatter)
+    [JsonConverter(typeof(TextLinesConverter))]
+    public string Theory { get; set; } = "";
+
+    [JsonConverter(typeof(TextLinesConverter))]
+    public string Explanation { get; set; } = "";
 
     // «Кошик» і «Номерки»: елементи-картки
     public List<QuestionItem> Items { get; set; } = new();
@@ -84,6 +92,50 @@ public class TableRow
 {
     public string Left { get; set; } = "";       // текст лівої клітинки (опис або значення)
     public string Answer { get; set; } = "";     // картка, яку треба покласти в праву клітинку
+}
+
+// Текст у файлі банку можна записати одним рядком або списком рядків —
+// списком зручніше редагувати довгу теорію: кожен рядок окремо
+public class TextLinesConverter : JsonConverter<string>
+{
+    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            return reader.GetString() ?? "";
+        }
+
+        if (reader.TokenType != JsonTokenType.StartArray)
+        {
+            throw new JsonException("Очікувався текст у лапках або список рядків у квадратних дужках.");
+        }
+
+        List<string> lines = new();
+
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+        {
+            if (reader.TokenType != JsonTokenType.String)
+            {
+                throw new JsonException("У списку рядків кожен рядок має бути в лапках.");
+            }
+
+            lines.Add(reader.GetString() ?? "");
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+
+        foreach (string line in value.Split('\n'))
+        {
+            writer.WriteStringValue(line);
+        }
+
+        writer.WriteEndArray();
+    }
 }
 
 // Українські назви типів завдань і режимів

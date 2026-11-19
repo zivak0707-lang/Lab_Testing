@@ -128,6 +128,17 @@ public static class QuestionBank
                 errors.Add(prefix + "немає тексту завдання (task).");
             }
 
+            // Блоки коду ``` мають і відкриватися, і закриватися
+            if (CountCodeFences(q.Theory) % 2 != 0)
+            {
+                errors.Add(prefix + "у теорії (theory) блок коду ``` не закрито.");
+            }
+
+            if (CountCodeFences(q.Explanation) % 2 != 0)
+            {
+                errors.Add(prefix + "у поясненні (explanation) блок коду ``` не закрито.");
+            }
+
             switch (q.Type)
             {
                 case QuestionType.Basket: ValidateBasket(q, prefix, errors); break;
@@ -251,15 +262,20 @@ public static class QuestionBank
         CheckTexts(q.ExtraWords, prefix + "зайві слова (extraWords)", errors);
     }
 
-    // «Порядок кроків»: щонайменше 3 різні кроки
+    // «Порядок кроків»: від 3 до 8 різних кроків (більше не вміщується у вікні)
     private static void ValidateOrder(Question q, string prefix, List<string> errors)
     {
-        if (q.Steps.Count < 3)
+        if (q.Steps.Count < 3 || q.Steps.Count > 8)
         {
-            errors.Add(prefix + "потрібно щонайменше 3 кроки (steps).");
+            errors.Add(prefix + "потрібно від 3 до 8 кроків (steps).");
         }
 
         CheckTexts(q.Steps, prefix + "кроки", errors);
+    }
+
+    private static int CountCodeFences(string text)
+    {
+        return text.Split('\n').Count(line => line.Trim() == "```");
     }
 
     // Тексти не порожні й не повторюються (інакше картки не відрізнити)

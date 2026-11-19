@@ -67,6 +67,15 @@ internal static class Program
         ShotList.WriteReadme(outDir, maxStage);
         BankListWriter.Write(Path.GetDirectoryName(outDir)!);
 
+        try
+        {
+            BankListWriter.WriteTheory(Path.GetDirectoryName(outDir)!);
+        }
+        catch (InvalidOperationException ex)
+        {
+            error ??= ex;
+        }
+
         if (error != null)
         {
             Console.Error.WriteLine("ПОМИЛКА: " + error);

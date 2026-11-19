@@ -36,6 +36,79 @@ internal static class BankListWriter
         File.WriteAllText(Path.Combine(docsDir, "bank_questions.md"), sb.ToString(), new UTF8Encoding(false));
     }
 
+    // Найдовший рядок коду, що вміщується в панелі теорії без переносу
+    private const int MaxCodeLine = 40;
+
+    // Створює docs/bank_theory.md — теорію і пояснення всіх питань для перевірки.
+    // Заодно перевіряє, що рядки коду не задовгі для панелі теорії
+    public static void WriteTheory(string docsDir)
+    {
+        QuestionBankData bank = QuestionBank.Parse(QuestionBank.ReadEmbeddedJson(), "вбудований банк");
+        List<string> tooLong = new();
+        StringBuilder sb = new();
+
+        sb.AppendLine("# Теорія і пояснення до питань банку");
+        sb.AppendLine();
+        sb.AppendLine("Файл згенеровано автоматично з `Lab_Testing/Data/questions.json`.");
+        sb.AppendLine("У програмі **теорія** показується на вкладці «Теорія» (режим «Навчання»), **пояснення** — на вкладці");
+        sb.AppendLine("«Пояснення» після кнопки «Перевірити» і в «Розборі помилок» на сторінці результату.");
+
+        foreach (Question q in bank.Questions)
+        {
+            sb.AppendLine();
+            sb.AppendLine("---");
+            sb.AppendLine();
+            sb.AppendLine($"## №{q.Id}. {q.Title}");
+            sb.AppendLine();
+            sb.AppendLine($"*{q.Type.ToUkrainian()} · {q.Topic}*");
+            sb.AppendLine();
+            sb.AppendLine($"**Завдання:** {q.Task}");
+            sb.AppendLine();
+            sb.AppendLine("### Теорія");
+            sb.AppendLine();
+            sb.AppendLine(LowerHeadings(q.Theory));
+            sb.AppendLine();
+            sb.AppendLine("### Пояснення (видно після перевірки)");
+            sb.AppendLine();
+            sb.AppendLine(LowerHeadings(q.Explanation));
+
+            tooLong.AddRange(LongCodeLines(q.Theory).Select(l => $"№{q.Id}, теорія: {l}"));
+            tooLong.AddRange(LongCodeLines(q.Explanation).Select(l => $"№{q.Id}, пояснення: {l}"));
+        }
+
+        File.WriteAllText(Path.Combine(docsDir, "bank_theory.md"), sb.ToString(), new UTF8Encoding(false));
+
+        if (tooLong.Count > 0)
+        {
+            throw new InvalidOperationException($"Рядки коду довші за {MaxCodeLine} символів:\n" + string.Join("\n", tooLong));
+        }
+    }
+
+    // Заголовки «## …» усередині теорії стають «#### …», щоб не змішуватися із заголовками питань
+    private static string LowerHeadings(string markup)
+    {
+        IEnumerable<string> lines = markup.Split('\n').Select(l => l.StartsWith("## ") ? "#### " + l[3..] : l);
+        return string.Join("\n", lines);
+    }
+
+    // Рядки всередині блоків ``` довші за MaxCodeLine
+    private static IEnumerable<string> LongCodeLines(string markup)
+    {
+        bool inCode = false;
+
+        foreach (string line in markup.Split('\n'))
+        {
+            if (line.Trim() == "```")
+            {
+                inCode = !inCode;
+            }
+            else if (inCode && line.Length > MaxCodeLine)
+            {
+                yield return $"{line} ({line.Length})";
+            }
+        }
+    }
+
     private static void AppendAnswer(StringBuilder sb, Question q)
     {
         switch (q.Type)

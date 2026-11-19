@@ -75,8 +75,7 @@ internal class Scenarios
         Console.WriteLine("Етап 4: перевірка в режимі «Навчання» і сторінка результату");
         GradingSelfCheck.Run();
 
-        TestSession session = CreateSession(TestMode.Training, MainQuestionIds);
-        TestForm form = new(session);
+        TestForm form = new(CreateSession(TestMode.Training, MainQuestionIds));
         form.Show();
         await Task.Delay(300);
 
@@ -107,21 +106,18 @@ internal class Scenarios
         form.ShowQuestion(4);
         Answers.FillWithMistakes(form.CurrentView);
 
-        // Демонстраційний час проходження (інакше на знімку було б кілька секунд)
-        session.StartedAt = DateTime.Now.AddSeconds(-372);
         await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
 
+        // Підсумок перевіряємо, але знімок сторінки результату (рисунок 25) автор робить сам:
+        // автоматичний прохід триває кілька секунд, і такий час проходження на знімку виглядав би неправдоподібно
         TestResult result = form.Result ?? throw new InvalidOperationException("Тест не завершився");
 
-        if (Math.Abs(result.TotalScore - 71.6) > 0.001 || result.Grade != 9)
+        if (Math.Abs(result.TotalScore - 70.3) > 0.001 || result.Grade != 9)
         {
-            throw new InvalidOperationException($"Очікувалось 71,6 бала і оцінка 9, а вийшло {result.TotalScore} і {result.Grade}");
+            throw new InvalidOperationException($"Очікувалось 70,3 бала і оцінка 9, а вийшло {result.TotalScore} і {result.Grade}");
         }
 
-        using ResultForm resultForm = new(result, showReview: true);
-        resultForm.Show();
-        await ui.ShotAsync(resultForm, 25);
-        resultForm.Close();
+        Console.WriteLine($"  Підсумок тесту: {Grading.Format(result.TotalScore)} бала, оцінка {result.Grade} — як очікувалось");
     }
 
     // Спроба тесту, у яку потрапили саме ці питання (підбираємо seed, щоб знімки були відтворювані)

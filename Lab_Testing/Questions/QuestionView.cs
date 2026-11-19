@@ -257,6 +257,13 @@ public abstract class QuestionView : UserControl
         };
     }
 
+    // Значення картки для тексту помилки: код — у зворотних лапках (покажеться моноширинним шрифтом),
+    // український текст — у «лапках-ялинках»
+    protected static string Quote(string value)
+    {
+        return Theme.FontFor(value) == Theme.CodeFont ? $"`{value}`" : $"«{value}»";
+    }
+
     // Підсвічує картку як правильну або помилкову (лише якщо highlight = true)
     protected static void Mark(CardLabel card, bool correct, bool highlight)
     {

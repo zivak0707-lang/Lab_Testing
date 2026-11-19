@@ -130,11 +130,11 @@ public class CategoriesView : QuestionView
         {
             QuestionItem item = Question.Items.First(i => i.Text == circle.Value);
             int rowIndex = rows.IndexOf((circle.Parent as DropZone)!);   // -1 — номерок ще в палітрі
-            string name = $"№{circle.Text} «{item.Text}»";
+            string name = $"№{circle.Text} {Quote(item.Text)}";
 
             if (rowIndex < 0)
             {
-                result.Mistakes.Add($"{name} не розкладено (правильно: «{item.Category}»)");
+                result.Mistakes.Add($"{name} не розкладено (правильно: {Quote(item.Category)})");
             }
             else if (Question.Categories[rowIndex] == item.Category)
             {
@@ -144,7 +144,7 @@ public class CategoriesView : QuestionView
             else
             {
                 Mark(circle, false, highlight);
-                result.Mistakes.Add($"{name} покладено в «{Question.Categories[rowIndex]}», правильно: «{item.Category}»");
+                result.Mistakes.Add($"{name} покладено в {Quote(Question.Categories[rowIndex])}, правильно: {Quote(item.Category)}");
             }
         }
 

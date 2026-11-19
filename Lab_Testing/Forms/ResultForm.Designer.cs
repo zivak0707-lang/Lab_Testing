@@ -92,7 +92,7 @@ namespace Lab_Testing
             lblLevel.Name = "lblLevel";
             lblLevel.Size = new Size(184, 18);
             lblLevel.TabIndex = 2;
-            lblLevel.Text = "достатній рівень";
+            lblLevel.Text = "рівень досягнень";
             lblLevel.TextAlign = ContentAlignment.MiddleCenter;
             //
             // lblGradeCaption
@@ -114,7 +114,7 @@ namespace Lab_Testing
             lblGrade.Name = "lblGrade";
             lblGrade.Size = new Size(184, 50);
             lblGrade.TabIndex = 0;
-            lblGrade.Text = "12";
+            lblGrade.Text = "—";
             lblGrade.TextAlign = ContentAlignment.MiddleCenter;
             //
             // lblDetails
@@ -169,7 +169,7 @@ namespace Lab_Testing
             lblScore.Name = "lblScore";
             lblScore.Size = new Size(260, 25);
             lblScore.TabIndex = 0;
-            lblScore.Text = "0 з 100 балів · 0 %";
+            lblScore.Text = "— з 100 балів  ·  — %";
             //
             // dgvQuestions
             //
@@ -291,7 +291,7 @@ namespace Lab_Testing
             lblFileInfo.Name = "lblFileInfo";
             lblFileInfo.Size = new Size(790, 36);
             lblFileInfo.TabIndex = 0;
-            lblFileInfo.Text = "Режим «Навчання»: результат не зберігається у файл.";
+            lblFileInfo.Text = "Відомості про файл результату";
             lblFileInfo.TextAlign = ContentAlignment.MiddleLeft;
             //
             // btnClose

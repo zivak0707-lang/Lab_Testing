@@ -61,7 +61,7 @@ public partial class TestForm : Form
 
         lblQuestionInfo.Text = $"Питання {index + 1} з {views.Count}  ·  {question.Type.ToUkrainian()}  ·  {question.Topic}";
         lblTask.Text = question.Task;
-        lblTheory.Text = question.Theory;
+        RichTextFormatter.Show(rtbTheory, question.Theory);
         ShowFeedback(lastChecks[index]);
 
         btnPrev.Enabled = index > 0;
@@ -170,16 +170,18 @@ public partial class TestForm : Form
         old.Dispose();
     }
 
-    // Показує на панелі теорії результат перевірки (null — сховати)
+    // Показує результат перевірки над вкладками і пояснення у вкладці «Пояснення» (null — сховати)
     private void ShowFeedback(QuestionResult? result)
     {
         bool show = result != null;
-        lblCheckTitle.Visible = show;
-        lblCheckSummary.Visible = show;
-        lblExplanation.Visible = show;
+        pnlCheck.Visible = show;
+        pnlCheckGap.Visible = show;
 
         if (result == null)
         {
+            RichTextFormatter.ShowHint(rtbExplanation,
+                "Натисніть «Перевірити» — тут з'явиться пояснення правильної відповіді.");
+            tabInfo.SelectedTab = tabTheory;
             return;
         }
 
@@ -187,17 +189,23 @@ public partial class TestForm : Form
 
         if (result.Mistakes.Count == 0)
         {
-            lblCheckSummary.Text = $"✔ Усе правильно! {score}.";
+            lblCheckSummary.Text = $"✔ Усе правильно! {score}";
             lblCheckSummary.ForeColor = Theme.Success;
-            lblExplanation.Text = "Пояснення: " + result.Explanation;
+            pnlCheck.BackColor = Theme.CorrectBack;
+            lblCheckHint.Text = "Можна переходити до наступного питання.";
         }
         else
         {
-            lblCheckSummary.Text = $"{Capitalize(result.Summary)} — {score}.";
-            lblCheckSummary.ForeColor = result.Score > 0 ? Theme.Warning : Theme.Error;
-            lblExplanation.Text = "Зелені картки — правильно, червоні — помилки, червона рамка — не заповнено. " +
-                                  "Виправте й перевірте ще раз.\n\nПояснення: " + result.Explanation;
+            bool partly = result.Score > 0;
+            lblCheckSummary.Text = $"{Capitalize(result.Summary)} — {score}";
+            lblCheckSummary.ForeColor = partly ? Theme.Warning : Theme.Error;
+            pnlCheck.BackColor = partly ? Theme.PartlyBack : Theme.WrongBack;
+            lblCheckHint.Text = "Зелене — правильно, червоне — помилка, червона рамка — не заповнено. " +
+                                "Виправте й перевірте ще раз.";
         }
+
+        RichTextFormatter.Show(rtbExplanation, result.Explanation);
+        tabInfo.SelectedTab = tabExplanation;
     }
 
     private static string Capitalize(string text)

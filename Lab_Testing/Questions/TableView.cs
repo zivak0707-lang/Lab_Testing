@@ -90,7 +90,7 @@ public class TableView : QuestionView
 
             if (card == null)
             {
-                result.Mistakes.Add($"«{row.Left}» — клітинку не заповнено (правильно: «{row.Answer}»)");
+                result.Mistakes.Add($"{Quote(row.Left)} — клітинку не заповнено (правильно: {Quote(row.Answer)})");
             }
             else if (card.Value == row.Answer)
             {
@@ -100,7 +100,7 @@ public class TableView : QuestionView
             else
             {
                 Mark(card, false, highlight);
-                result.Mistakes.Add($"«{row.Left}» — покладено «{card.Value}», правильно: «{row.Answer}»");
+                result.Mistakes.Add($"{Quote(row.Left)} — покладено {Quote(card.Value)}, правильно: {Quote(row.Answer)}");
             }
         }
 

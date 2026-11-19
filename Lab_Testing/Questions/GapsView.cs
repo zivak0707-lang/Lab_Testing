@@ -101,7 +101,7 @@ public class GapsView : QuestionView
 
             if (card == null)
             {
-                result.Mistakes.Add($"Пропуск {i + 1}: не заповнено (правильно: «{answers[i]}»)");
+                result.Mistakes.Add($"Пропуск {i + 1}: не заповнено (правильно: {Quote(answers[i])})");
             }
             else if (card.Value == answers[i])
             {
@@ -111,7 +111,7 @@ public class GapsView : QuestionView
             else
             {
                 Mark(card, false, highlight);
-                result.Mistakes.Add($"Пропуск {i + 1}: вставлено «{card.Value}», правильно: «{answers[i]}»");
+                result.Mistakes.Add($"Пропуск {i + 1}: вставлено {Quote(card.Value)}, правильно: {Quote(answers[i])}");
             }
         }
 
