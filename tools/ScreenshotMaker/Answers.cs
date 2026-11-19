@@ -133,6 +133,17 @@ internal static class Answers
         }
     }
 
+    // «Кошик»: прибрано лише дві зайві картки і одну потрібну (частина зайвих лишилася на слайді)
+    public static void FillBasketPartly(QuestionView view)
+    {
+        Question q = view.Question;
+
+        foreach (QuestionItem item in q.Items.Where(i => !i.Keep).Take(2).Append(q.Items.First(i => i.Keep)))
+        {
+            view.PlaceCard(Card(view, item.Text), view.GetZone("basket"), DragDropEffects.Move);
+        }
+    }
+
     // Скільки балів має дати FillWithMistakes (рахуємо незалежно від програми)
     public static double ExpectedMistakesScore(Question q)
     {

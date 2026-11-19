@@ -50,8 +50,9 @@ internal static class BankListWriter
         sb.AppendLine("# Теорія і пояснення до питань банку");
         sb.AppendLine();
         sb.AppendLine("Файл згенеровано автоматично з `Lab_Testing/Data/questions.json`.");
-        sb.AppendLine("У програмі **теорія** показується на вкладці «Теорія» (режим «Навчання»), **пояснення** — на вкладці");
-        sb.AppendLine("«Пояснення» після кнопки «Перевірити» і в «Розборі помилок» на сторінці результату.");
+        sb.AppendLine("У режимі «Навчання» **теорія** показується на вкладці «Теорія». Після «Перевірити» на вкладці «Перевірка»");
+        sb.AppendLine("видно, що саме виправити, і **підказку**. **Правильна відповідь** відкривається, якщо все правильно, або");
+        sb.AppendLine("кнопкою «Показати правильну відповідь» після двох спроб. На сторінці результату вона є в «Розборі помилок».");
 
         foreach (Question q in bank.Questions)
         {
@@ -68,7 +69,11 @@ internal static class BankListWriter
             sb.AppendLine();
             sb.AppendLine(LowerHeadings(q.Theory));
             sb.AppendLine();
-            sb.AppendLine("### Пояснення (видно після перевірки)");
+            sb.AppendLine("### Підказка (після перевірки з помилками)");
+            sb.AppendLine();
+            sb.AppendLine(q.Hint);
+            sb.AppendLine();
+            sb.AppendLine("### Правильна відповідь (якщо все правильно або учень сам відкрив після 2 спроб)");
             sb.AppendLine();
             sb.AppendLine(LowerHeadings(q.Explanation));
 

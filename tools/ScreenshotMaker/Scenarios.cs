@@ -101,6 +101,28 @@ internal class Scenarios
         // Питання 1 і 5 без відповіді — попередження при завершенні («Ні» — повертаємося до тесту)
         await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), 24, WindowCapture.IDNO);
 
+        // Кошик: прибрано лише частину зайвих і одну потрібну — «невидимі» помилки на слайді
+        form.ShowQuestion(0);
+        Answers.FillBasketPartly(form.CurrentView);
+        Ui.Click(form, "btnCheck");
+        await ui.ShotAsync(form, 27);
+
+        // Таблиця: друга спроба (картку переклали і повернули) — після неї можна відкрити відповідь
+        form.ShowQuestion(1);
+        QuestionView table = form.CurrentView;
+        CardLabel moved = table.GetZone("row:0").Cards[0];
+        table.PlaceCard(moved, table.GetZone("palette"), DragDropEffects.Move);
+        table.PlaceCard(moved, table.GetZone("row:0"), DragDropEffects.Move);
+        Ui.Click(form, "btnCheck");
+
+        if (!Ui.Find<Button>(form, "btnShowAnswer").Enabled)
+        {
+            throw new InvalidOperationException("Після двох спроб кнопка «Показати правильну відповідь» мала стати доступною");
+        }
+
+        Ui.Click(form, "btnShowAnswer");
+        await ui.ShotAsync(form, 28);
+
         form.ShowQuestion(0);
         Answers.FillWithMistakes(form.CurrentView);
         form.ShowQuestion(4);

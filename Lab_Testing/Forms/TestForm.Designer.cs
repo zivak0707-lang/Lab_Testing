@@ -40,8 +40,9 @@ namespace Lab_Testing
             tabInfo = new TabControl();
             tabTheory = new TabPage();
             rtbTheory = new RichTextBox();
-            tabExplanation = new TabPage();
-            rtbExplanation = new RichTextBox();
+            tabCheck = new TabPage();
+            rtbCheck = new RichTextBox();
+            btnShowAnswer = new Button();
             pnlCheckGap = new Panel();
             pnlCheck = new Panel();
             lblCheckHint = new Label();
@@ -57,7 +58,7 @@ namespace Lab_Testing
             pnlTheory.SuspendLayout();
             tabInfo.SuspendLayout();
             tabTheory.SuspendLayout();
-            tabExplanation.SuspendLayout();
+            tabCheck.SuspendLayout();
             pnlCheck.SuspendLayout();
             pnlBottom.SuspendLayout();
             SuspendLayout();
@@ -169,7 +170,7 @@ namespace Lab_Testing
             // tabInfo
             //
             tabInfo.Controls.Add(tabTheory);
-            tabInfo.Controls.Add(tabExplanation);
+            tabInfo.Controls.Add(tabCheck);
             tabInfo.Dock = DockStyle.Fill;
             tabInfo.Location = new Point(8, 116);
             tabInfo.Name = "tabInfo";
@@ -204,32 +205,45 @@ namespace Lab_Testing
             rtbTheory.TabStop = false;
             rtbTheory.Text = "";
             //
-            // tabExplanation
+            // tabCheck
             //
-            tabExplanation.BackColor = Color.FromArgb(255, 249, 232);
-            tabExplanation.Controls.Add(rtbExplanation);
-            tabExplanation.Location = new Point(4, 26);
-            tabExplanation.Name = "tabExplanation";
-            tabExplanation.Padding = new Padding(6);
-            tabExplanation.Size = new Size(336, 334);
-            tabExplanation.TabIndex = 1;
-            tabExplanation.Text = "Пояснення";
+            tabCheck.BackColor = Color.FromArgb(255, 249, 232);
+            tabCheck.Controls.Add(rtbCheck);
+            tabCheck.Controls.Add(btnShowAnswer);
+            tabCheck.Location = new Point(4, 26);
+            tabCheck.Name = "tabCheck";
+            tabCheck.Padding = new Padding(6);
+            tabCheck.Size = new Size(336, 334);
+            tabCheck.TabIndex = 1;
+            tabCheck.Text = "Перевірка";
             //
-            // rtbExplanation
+            // rtbCheck
             //
-            rtbExplanation.BackColor = Color.FromArgb(255, 249, 232);
-            rtbExplanation.BorderStyle = BorderStyle.None;
-            rtbExplanation.DetectUrls = false;
-            rtbExplanation.Dock = DockStyle.Fill;
-            rtbExplanation.ForeColor = Color.FromArgb(25, 35, 48);
-            rtbExplanation.Location = new Point(6, 6);
-            rtbExplanation.Name = "rtbExplanation";
-            rtbExplanation.ReadOnly = true;
-            rtbExplanation.ScrollBars = RichTextBoxScrollBars.Vertical;
-            rtbExplanation.Size = new Size(324, 322);
-            rtbExplanation.TabIndex = 0;
-            rtbExplanation.TabStop = false;
-            rtbExplanation.Text = "";
+            rtbCheck.BackColor = Color.FromArgb(255, 249, 232);
+            rtbCheck.BorderStyle = BorderStyle.None;
+            rtbCheck.DetectUrls = false;
+            rtbCheck.Dock = DockStyle.Fill;
+            rtbCheck.ForeColor = Color.FromArgb(25, 35, 48);
+            rtbCheck.Location = new Point(6, 6);
+            rtbCheck.Name = "rtbCheck";
+            rtbCheck.ReadOnly = true;
+            rtbCheck.ScrollBars = RichTextBoxScrollBars.Vertical;
+            rtbCheck.Size = new Size(324, 284);
+            rtbCheck.TabIndex = 0;
+            rtbCheck.TabStop = false;
+            rtbCheck.Text = "";
+            //
+            // btnShowAnswer
+            //
+            btnShowAnswer.Dock = DockStyle.Bottom;
+            btnShowAnswer.Enabled = false;
+            btnShowAnswer.Location = new Point(6, 290);
+            btnShowAnswer.Name = "btnShowAnswer";
+            btnShowAnswer.Size = new Size(324, 38);
+            btnShowAnswer.TabIndex = 1;
+            btnShowAnswer.Text = "Показати правильну відповідь";
+            btnShowAnswer.UseVisualStyleBackColor = true;
+            btnShowAnswer.Click += BtnShowAnswer_Click;
             //
             // pnlCheckGap
             //
@@ -376,7 +390,7 @@ namespace Lab_Testing
             pnlTheory.ResumeLayout(false);
             tabInfo.ResumeLayout(false);
             tabTheory.ResumeLayout(false);
-            tabExplanation.ResumeLayout(false);
+            tabCheck.ResumeLayout(false);
             pnlCheck.ResumeLayout(false);
             pnlBottom.ResumeLayout(false);
             ResumeLayout(false);
@@ -400,8 +414,9 @@ namespace Lab_Testing
         private TabControl tabInfo;
         private TabPage tabTheory;
         private RichTextBox rtbTheory;
-        private TabPage tabExplanation;
-        private RichTextBox rtbExplanation;
+        private TabPage tabCheck;
+        private RichTextBox rtbCheck;
+        private Button btnShowAnswer;
         private Panel pnlBottom;
         private Button btnPrev;
         private Button btnNext;

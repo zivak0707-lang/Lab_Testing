@@ -49,5 +49,16 @@ internal static class GradingSelfCheck
             throw new InvalidOperationException(
                 $"Питання №{q.Id} ({what}): {result.Score} балів і {result.Mistakes.Count} помилок, очікувалось {expected}");
         }
+
+        // «Що виправити» є завжди, коли є помилки, і ніколи не називає правильної відповіді
+        bool issuesOk = (result.Issues.Count > 0) == mustHaveMistakes;
+        bool noAnswers = result.Issues.All(i => !i.Contains("правильно"));
+
+        if (!issuesOk || !noAnswers)
+        {
+            throw new InvalidOperationException(
+                $"Питання №{q.Id} ({what}): список «що виправити» неповний або підказує відповідь: " +
+                string.Join(" | ", result.Issues));
+        }
     }
 }

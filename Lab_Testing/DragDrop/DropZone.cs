@@ -10,6 +10,7 @@ public class DropZone : FlowLayoutPanel
 {
     private bool highlighted;
     private bool missing;
+    private bool attention;
     private Color normalBackColor = Theme.ZoneBack;
 
     // Назва зони: "slide", "basket", "palette", "row:0" ...
@@ -84,6 +85,19 @@ public class DropZone : FlowLayoutPanel
         }
     }
 
+    // Після перевірки: у зоні ще є що виправити (наприклад, на слайді лишилися зайві картки) —
+    // помаранчева рамка. Які саме картки — не підказуємо
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool Attention
+    {
+        get => attention;
+        set
+        {
+            attention = value;
+            Invalidate();
+        }
+    }
+
     // Картки, що зараз лежать у зоні
     public List<CardLabel> Cards => Controls.OfType<CardLabel>().ToList();
 
@@ -97,11 +111,15 @@ public class DropZone : FlowLayoutPanel
         Rectangle r = new(0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
 
         // Рамка: пунктирна сіра, під час наведення картки — суцільна синя,
-        // порожня після перевірки — червона
+        // порожня після перевірки — червона, «ще є що виправити» — помаранчева
         bool showMissing = missing && Controls.Count == 0 && !highlighted;
-        Color borderColor = highlighted ? Theme.Accent : showMissing ? Theme.Error : Theme.ZoneBorder;
+        bool showAttention = attention && !highlighted;
+        Color borderColor = highlighted ? Theme.Accent
+                          : showMissing ? Theme.Error
+                          : showAttention ? Theme.Warning
+                          : Theme.ZoneBorder;
 
-        using (Pen pen = new(borderColor, highlighted || showMissing ? 2 : 1))
+        using (Pen pen = new(borderColor, highlighted || showMissing || showAttention ? 2 : 1))
         {
             pen.DashStyle = highlighted ? DashStyle.Solid : DashStyle.Dash;
             g.DrawRectangle(pen, new Rectangle(r.X, r.Y, r.Width - (int)pen.Width / 2, r.Height - (int)pen.Width / 2));

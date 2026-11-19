@@ -87,6 +87,7 @@ public class OrderView : QuestionView
             if (card == null)
             {
                 result.Mistakes.Add($"Крок {i + 1}: клітинку не заповнено (правильно: {Quote(expected)})");
+                result.Issues.Add($"Крок {i + 1}: клітинку ще не заповнено.");
             }
             else if (card.Value == expected)
             {
@@ -97,6 +98,7 @@ public class OrderView : QuestionView
             {
                 Mark(card, false, highlight);
                 result.Mistakes.Add($"Крок {i + 1}: стоїть {Quote(card.Value)}, правильно: {Quote(expected)}");
+                result.Issues.Add($"Крок {i + 1}: {Quote(card.Value)} стоїть не на своєму місці.");
             }
         }
 

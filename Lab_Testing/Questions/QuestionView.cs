@@ -241,6 +241,7 @@ public abstract class QuestionView : UserControl
         foreach (DropZone zone in zones)
         {
             zone.Missing = false;
+            zone.Attention = false;
         }
     }
 

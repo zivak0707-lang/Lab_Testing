@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 
 namespace Lab_Testing;
 
@@ -12,8 +13,12 @@ public class QuestionResult
     public double Score { get; set; }                       // набрані бали (з частковими)
     public double MaxScore { get; set; } = Grading.QuestionMaxScore;
     public string Summary { get; set; } = "";               // коротко: «правильно 4 з 6»
-    public List<string> Mistakes { get; set; } = new();     // опис кожної помилки
+    public List<string> Mistakes { get; set; } = new();     // опис кожної помилки разом із правильною відповіддю
     public string Explanation { get; set; } = "";           // пояснення з банку
+
+    // Що виправити — без правильної відповіді (для перевірки в режимі «Навчання»; у файл не зберігається)
+    [JsonIgnore]
+    public List<string> Issues { get; set; } = new();
 }
 
 // Підрахунок балів і оцінки

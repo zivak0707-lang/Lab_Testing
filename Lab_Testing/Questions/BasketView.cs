@@ -52,12 +52,26 @@ public class BasketView : QuestionView
             {
                 removedWrong++;
                 result.Mistakes.Add($"{Quote(card.Value)} прибрано в кошик, але ця картка потрібна — вона мала лишитися на слайді");
+                result.Issues.Add($"{Quote(card.Value)} прибрано даремно: ця картка потрібна. Поверніть її на слайд.");
             }
         }
 
-        foreach (CardLabel card in slide.Cards.Where(c => extras.Contains(c.Value)))
+        List<CardLabel> extrasLeft = slide.Cards.Where(c => extras.Contains(c.Value)).ToList();
+
+        foreach (CardLabel card in extrasLeft)
         {
             result.Mistakes.Add($"{Quote(card.Value)} залишилося на слайді, хоча це зайва картка");
+        }
+
+        // Зайві картки, що лишилися на слайді: кажемо скільки, але не які — помаранчева рамка навколо слайда
+        if (extrasLeft.Count > 0)
+        {
+            result.Issues.Add($"На слайді ще лишилися зайві картки: {extrasLeft.Count}. Знайдіть їх і перетягніть у кошик.");
+
+            if (highlight)
+            {
+                slide.Attention = true;
+            }
         }
 
         result.Score = Grading.Points(removedCorrect - removedWrong, extras.Count);

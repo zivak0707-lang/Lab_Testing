@@ -123,6 +123,7 @@ public class CategoriesView : QuestionView
     public override QuestionResult Evaluate(bool highlight)
     {
         QuestionResult result = NewResult();
+        List<string> notPlaced = new();
         int correct = 0;
 
         // Перебираємо номерки по порядку номерів: 1, 2, 3 ...
@@ -135,6 +136,7 @@ public class CategoriesView : QuestionView
             if (rowIndex < 0)
             {
                 result.Mistakes.Add($"{name} не розкладено (правильно: {Quote(item.Category)})");
+                notPlaced.Add("№" + circle.Text);
             }
             else if (Question.Categories[rowIndex] == item.Category)
             {
@@ -145,6 +147,18 @@ public class CategoriesView : QuestionView
             {
                 Mark(circle, false, highlight);
                 result.Mistakes.Add($"{name} покладено в {Quote(Question.Categories[rowIndex])}, правильно: {Quote(item.Category)}");
+                result.Issues.Add($"{name} лежить не в тій категорії.");
+            }
+        }
+
+        // Нерозкладені номерки видно в палітрі, тому їх можна назвати; палітра — у помаранчевій рамці
+        if (notPlaced.Count > 0)
+        {
+            result.Issues.Add($"Ще не розкладено номерки: {string.Join(", ", notPlaced)}.");
+
+            if (highlight)
+            {
+                palette.Attention = true;
             }
         }
 

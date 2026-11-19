@@ -7,6 +7,8 @@ public partial class TestForm : Form
     private readonly List<QuestionView> views = new();     // по поданню на кожне питання (зберігають відповіді)
     private readonly List<Button> stepButtons = new();      // кнопки 1..5 у шапці
     private readonly QuestionResult?[] lastChecks;          // остання перевірка кожного питання (null — не перевірялось)
+    private readonly int[] checkCounts;                      // скільки разів перевіряли змінену відповідь
+    private readonly bool[] answerShown;                     // учень відкрив правильну відповідь
     private int currentIndex;                                // поточне питання (від 0)
     private bool finished;                                   // тест завершено — закривати без запитань
 
@@ -15,6 +17,8 @@ public partial class TestForm : Form
         InitializeComponent();
         this.session = session;
         lastChecks = new QuestionResult?[session.Questions.Count];
+        checkCounts = new int[session.Questions.Count];
+        answerShown = new bool[session.Questions.Count];
 
         lblStudent.Text = $"{session.StudentName}  ·  група {session.Group}  ·  режим «{session.Mode.ToUkrainian()}»";
 
@@ -63,6 +67,7 @@ public partial class TestForm : Form
         lblTask.Text = question.Task;
         RichTextFormatter.Show(rtbTheory, question.Theory);
         ShowFeedback(lastChecks[index]);
+        tabInfo.SelectedTab = lastChecks[index] != null ? tabCheck : tabTheory;
 
         btnPrev.Enabled = index > 0;
         btnNext.Enabled = index < views.Count - 1;
@@ -149,17 +154,40 @@ public partial class TestForm : Form
         UpdateStepButtons();
     }
 
-    // ===================== Режим «Навчання»: перевірка і скидання =====================
+    // ===================== Режим «Навчання»: перевірка, відповідь, скидання =====================
 
-    // «Перевірити»: підсвічуємо картки і показуємо бали та пояснення. Спроб скільки завгодно
+    // Після скількох перевірок (зі зміненою відповіддю) можна відкрити правильну відповідь
+    private const int ChecksBeforeAnswer = 2;
+
+    // «Перевірити»: підсвічуємо картки, показуємо бали і що виправити — але не саму відповідь
     private void BtnCheck_Click(object? sender, EventArgs e)
     {
-        QuestionResult result = CurrentView.Evaluate(highlight: true);
-        lastChecks[currentIndex] = result;
-        ShowFeedback(result);
+        if (!CurrentView.HasAnswer)
+        {
+            ShowNotAnswered();
+            return;
+        }
+
+        // Спробою вважається лише перевірка зміненої відповіді (повторне натискання без змін не рахується)
+        if (lastChecks[currentIndex] == null)
+        {
+            checkCounts[currentIndex]++;
+        }
+
+        lastChecks[currentIndex] = CurrentView.Evaluate(highlight: true);
+        ShowFeedback(lastChecks[currentIndex]);
+        tabInfo.SelectedTab = tabCheck;
     }
 
-    // «Скинути»: питання починається заново (картки перемішуються ще раз)
+    // «Показати правильну відповідь»: учень відкриває її свідомо, після кількох спроб
+    private void BtnShowAnswer_Click(object? sender, EventArgs e)
+    {
+        answerShown[currentIndex] = true;
+        ShowFeedback(lastChecks[currentIndex]);
+        tabInfo.SelectedTab = tabCheck;
+    }
+
+    // «Скинути»: питання починається заново (картки перемішуються ще раз); спроби не обнуляються
     private void BtnReset_Click(object? sender, EventArgs e)
     {
         QuestionView old = views[currentIndex];
@@ -170,42 +198,117 @@ public partial class TestForm : Form
         old.Dispose();
     }
 
-    // Показує результат перевірки над вкладками і пояснення у вкладці «Пояснення» (null — сховати)
+    // Перевірити нічого: учень ще не поклав жодної картки
+    private void ShowNotAnswered()
+    {
+        pnlCheck.Visible = true;
+        pnlCheckGap.Visible = true;
+        pnlCheck.BackColor = Theme.SelectedBack;
+        lblCheckSummary.Text = "Спершу дайте відповідь";
+        lblCheckSummary.ForeColor = Theme.Primary;
+        lblCheckHint.Text = "Перетягніть картки, а потім натисніть «Перевірити». Порожню відповідь не перевіряємо.";
+        FitCheckPanel();
+    }
+
+    // Показує результат перевірки над вкладками і вміст вкладки «Перевірка» (result == null — ще не перевірялось)
     private void ShowFeedback(QuestionResult? result)
     {
-        bool show = result != null;
-        pnlCheck.Visible = show;
-        pnlCheckGap.Visible = show;
+        Question question = session.Questions[currentIndex];
+        bool perfect = result != null && result.Mistakes.Count == 0;
+        bool showAnswer = perfect || answerShown[currentIndex];
+
+        pnlCheck.Visible = result != null;
+        pnlCheckGap.Visible = result != null;
+        rtbCheck.Clear();
 
         if (result == null)
         {
-            RichTextFormatter.ShowHint(rtbExplanation,
-                "Натисніть «Перевірити» — тут з'явиться пояснення правильної відповіді.");
-            tabInfo.SelectedTab = tabTheory;
-            return;
-        }
-
-        string score = $"{Grading.Format(result.Score)} з {Grading.Format(result.MaxScore)} балів";
-
-        if (result.Mistakes.Count == 0)
-        {
-            lblCheckSummary.Text = $"✔ Усе правильно! {score}";
-            lblCheckSummary.ForeColor = Theme.Success;
-            pnlCheck.BackColor = Theme.CorrectBack;
-            lblCheckHint.Text = "Можна переходити до наступного питання.";
+            RichTextFormatter.AppendParagraph(rtbCheck,
+                "Натисніть «Перевірити» — тут з'явиться, що саме треба виправити.", Theme.MutedText);
         }
         else
         {
-            bool partly = result.Score > 0;
-            lblCheckSummary.Text = $"{Capitalize(result.Summary)} — {score}";
-            lblCheckSummary.ForeColor = partly ? Theme.Warning : Theme.Error;
-            pnlCheck.BackColor = partly ? Theme.PartlyBack : Theme.WrongBack;
-            lblCheckHint.Text = "Зелене — правильно, червоне — помилка, червона рамка — не заповнено. " +
-                                "Виправте й перевірте ще раз.";
+            string score = $"{Grading.Format(result.Score)} з {Grading.Format(result.MaxScore)} балів";
+
+            if (perfect)
+            {
+                lblCheckSummary.Text = $"✔ Усе правильно! {score}";
+                lblCheckSummary.ForeColor = Theme.Success;
+                pnlCheck.BackColor = Theme.CorrectBack;
+                lblCheckHint.Text = "Нижче — пояснення, щоб закріпити тему. Можна переходити до наступного питання.";
+            }
+            else
+            {
+                bool partly = result.Score > 0;
+                lblCheckSummary.Text = $"{Capitalize(result.Summary)} — {score}";
+                lblCheckSummary.ForeColor = partly ? Theme.Warning : Theme.Error;
+                pnlCheck.BackColor = partly ? Theme.PartlyBack : Theme.WrongBack;
+                lblCheckHint.Text = "Зелене — правильно, червоне — помилка. Червона рамка — не заповнено, " +
+                                    "помаранчева — тут ще є що виправити.";
+
+                // Що виправити — без готової відповіді
+                RichTextFormatter.AppendHeading(rtbCheck, "Що виправити");
+
+                foreach (string issue in result.Issues)
+                {
+                    RichTextFormatter.AppendParagraph(rtbCheck, issue, rtbCheck.ForeColor, bullet: true);
+                }
+
+                if (question.Hint.Length > 0)
+                {
+                    RichTextFormatter.AppendHeading(rtbCheck, "Підказка");
+                    RichTextFormatter.AppendMarkup(rtbCheck, question.Hint);
+                }
+            }
         }
 
-        RichTextFormatter.Show(rtbExplanation, result.Explanation);
-        tabInfo.SelectedTab = tabExplanation;
+        // Повна відповідь: якщо все правильно (як пояснення) або якщо учень сам її відкрив
+        if (showAnswer)
+        {
+            RichTextFormatter.AppendMarkup(rtbCheck, question.Explanation);
+        }
+
+        rtbCheck.SelectionStart = 0;
+        rtbCheck.ScrollToCaret();
+        UpdateAnswerButton(perfect);
+        FitCheckPanel();
+    }
+
+    // Висота блоку результату під довжину текстів (довгий підсумок переноситься на другий рядок)
+    private void FitCheckPanel()
+    {
+        int width = pnlCheck.ClientSize.Width - pnlCheck.Padding.Horizontal;
+        lblCheckSummary.Height = TextHeight(lblCheckSummary, width);
+        pnlCheck.Height = pnlCheck.Padding.Vertical + lblCheckSummary.Height + TextHeight(lblCheckHint, width);
+    }
+
+    private static int TextHeight(Label label, int width)
+    {
+        Size size = TextRenderer.MeasureText(label.Text, label.Font, new Size(width, int.MaxValue),
+            TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
+        return size.Height + 6;
+    }
+
+    // Кнопка «Показати правильну відповідь»: доступна після ChecksBeforeAnswer спроб
+    private void UpdateAnswerButton(bool perfect)
+    {
+        int checks = checkCounts[currentIndex];
+
+        if (perfect || answerShown[currentIndex])
+        {
+            btnShowAnswer.Enabled = false;
+            btnShowAnswer.Text = perfect ? "Відповідь правильна" : "Правильну відповідь показано";
+        }
+        else if (checks >= ChecksBeforeAnswer)
+        {
+            btnShowAnswer.Enabled = true;
+            btnShowAnswer.Text = "Показати правильну відповідь";
+        }
+        else
+        {
+            btnShowAnswer.Enabled = false;
+            btnShowAnswer.Text = $"Відповідь — після {ChecksBeforeAnswer} спроб (зараз {checks})";
+        }
     }
 
     private static string Capitalize(string text)
@@ -233,6 +336,16 @@ public partial class TestForm : Form
     private void Finish(bool byTimeout)
     {
         List<QuestionResult> results = views.Select(v => v.Evaluate(highlight: false)).ToList();
+
+        // У «Навчанні» позначаємо питання, де учень відкривав правильну відповідь
+        for (int i = 0; i < results.Count; i++)
+        {
+            if (answerShown[i])
+            {
+                results[i].Summary += " · відповідь переглянуто";
+            }
+        }
+
         Result = TestResult.Create(session, results, DateTime.Now, byTimeout);
 
         finished = true;

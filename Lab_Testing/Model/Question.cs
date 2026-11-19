@@ -51,6 +51,10 @@ public class Question
     [JsonConverter(typeof(TextLinesConverter))]
     public string Explanation { get; set; } = "";
 
+    // Підказка після невдалої перевірки: нагадує правило, але не називає відповідей
+    [JsonConverter(typeof(TextLinesConverter))]
+    public string Hint { get; set; } = "";
+
     // «Кошик» і «Номерки»: елементи-картки
     public List<QuestionItem> Items { get; set; } = new();
 
