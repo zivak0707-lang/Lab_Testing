@@ -98,19 +98,55 @@ public static class QuestionBank
         return reader.ReadToEnd();
     }
 
-    // Перетворює текст JSON на банк і перевіряє його. sourceName — для повідомлень про помилки
+    // Ті самі послаблення, що й під час читання банку: коментарі // і зайва кома в кінці списку
+    private static readonly JsonDocumentOptions DocumentOptions = new()
+    {
+        CommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+
+    // Перетворює текст JSON на банк і перевіряє його. sourceName — для повідомлень про помилки.
+    // Три кроки: запис файлу (лапки, коми, дужки) -> будова (поля і їхній вигляд) -> зміст питань
     public static QuestionBankData Parse(string json, string sourceName)
     {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new BankException($"{sourceName}: файл порожній.");
+        }
+
+        // 1. Запис файлу. Перевіряємо окремо, до читання в класи, щоб пояснити помилку людською мовою
+        JsonDocument document;
+
+        try
+        {
+            document = JsonDocument.Parse(json, DocumentOptions);
+        }
+        catch (JsonException ex)
+        {
+            throw Errors(sourceName, BankDiagnostics.DescribeSyntaxError(json, ex.LineNumber));
+        }
+
+        // 2. Будова: потрібні поля є, значення правильного вигляду, невідомих полів немає
+        using (document)
+        {
+            List<string> structure = BankDiagnostics.CheckStructure(document.RootElement, json);
+
+            if (structure.Count > 0)
+            {
+                throw Errors(sourceName, structure);
+            }
+        }
+
+        // 3. Читання в класи (після кроків 1–2 тут уже не буває несподіванок) і перевірка змісту
         QuestionBankData? bank;
 
         try
         {
             bank = JsonSerializer.Deserialize<QuestionBankData>(json, JsonOptions);
         }
-        catch (JsonException ex)
+        catch (JsonException)
         {
-            long line = (ex.LineNumber ?? 0) + 1;
-            throw new BankException($"{sourceName}: помилка запису JSON у рядку {line}.\n{ex.Message}");
+            throw Errors(sourceName, new List<string> { "дані банку не вдалося прочитати: перевірте числа і значення true/false." });
         }
 
         if (bank == null)
@@ -118,27 +154,34 @@ public static class QuestionBank
             throw new BankException($"{sourceName}: файл порожній.");
         }
 
-        List<string> errors = Validate(bank);
+        List<string> errors = Validate(bank, json);
 
         if (errors.Count > 0)
         {
-            List<string> shown = errors.Take(MaxErrorsToShow).ToList();
-
-            if (errors.Count > MaxErrorsToShow)
-            {
-                shown.Add($"... і ще {errors.Count - MaxErrorsToShow} помилок.");
-            }
-
-            throw new BankException($"{sourceName} містить помилки:\n• " + string.Join("\n• ", shown));
+            throw Errors(sourceName, errors);
         }
 
         return bank;
     }
 
-    // ===================== Перевірка =====================
+    // Помилка зі списком пунктів (не більше MaxErrorsToShow)
+    private static BankException Errors(string sourceName, List<string> errors)
+    {
+        List<string> shown = errors.Take(MaxErrorsToShow).ToList();
 
-    // Повертає список помилок банку (порожній список — банк правильний)
-    public static List<string> Validate(QuestionBankData bank)
+        if (errors.Count > MaxErrorsToShow)
+        {
+            shown.Add($"... і ще {errors.Count - MaxErrorsToShow} помилок.");
+        }
+
+        return new BankException($"{sourceName} містить помилки:\n• " + string.Join("\n• ", shown));
+    }
+
+    // ===================== Перевірка змісту =====================
+
+    // Повертає список помилок банку (порожній список — банк правильний).
+    // json — текст банку, щоб указати рядок, де починається питання
+    public static List<string> Validate(QuestionBankData bank, string json = "")
     {
         List<string> errors = new();
         ValidateSettings(bank.Settings, errors);
@@ -157,7 +200,9 @@ public static class QuestionBank
 
         foreach (Question q in bank.Questions)
         {
-            string prefix = $"Питання №{q.Id} ({q.Type}): ";
+            int line = BankDiagnostics.FindQuestionLine(json, q.Id);
+            string where = line > 0 ? $", рядок {line}" : "";
+            string prefix = $"Питання №{q.Id} («{q.Type.ToUkrainian()}»{where}): ";
 
             if (string.IsNullOrWhiteSpace(q.Task))
             {
@@ -167,12 +212,12 @@ public static class QuestionBank
             // Блоки коду ``` мають і відкриватися, і закриватися
             if (CountCodeFences(q.Theory) % 2 != 0)
             {
-                errors.Add(prefix + "у теорії (theory) блок коду ``` не закрито.");
+                errors.Add(prefix + "у теорії (theory) блок коду не закрито: рядків із трьома зворотними лапками має бути парна кількість.");
             }
 
             if (CountCodeFences(q.Explanation) % 2 != 0)
             {
-                errors.Add(prefix + "у поясненні (explanation) блок коду ``` не закрито.");
+                errors.Add(prefix + "у поясненні (explanation) блок коду не закрито: рядків із трьома зворотними лапками має бути парна кількість.");
             }
 
             switch (q.Type)

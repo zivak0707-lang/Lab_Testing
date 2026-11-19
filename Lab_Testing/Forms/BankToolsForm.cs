@@ -48,6 +48,18 @@ public partial class BankToolsForm : Form
             return;
         }
 
+        // Ключ не повинен лежати там, де є файли учнів: з ним можна підписати підроблений результат
+        string? reason = StudentFolderReason(Path.GetDirectoryName(saveKeyDialog.FileName)!);
+
+        if (reason != null && !Dialogs.Ask(this,
+                $"Ви зберігаєте копію ключа в теку, {reason}.\n\n" +
+                "Ключ не повинен потрапити до учнів: хто його має, може підписати підроблений результат. " +
+                "Краще зберегти копію на флешку або в особисту теку, куди учні не мають доступу.\n\nЗберегти тут усе одно?",
+                "Небезпечне місце для ключа", warning: true))
+        {
+            return;
+        }
+
         TeacherKey.Export(saveKeyDialog.FileName);
         ShowLog($"## Копію ключа збережено\n- Файл: `{saveKeyDialog.FileName}`\n" +
                 "- Зберігайте його в надійному місці і не передавайте учням: хто має ключ, може підписати підроблений результат.\n" +
@@ -185,11 +197,42 @@ public partial class BankToolsForm : Form
             : "- Архів для учнів не створено: так буває, коли запущено версію для розробки. " +
               "Роздайте учням `Lab_Testing.exe` і `questions.dat` разом, в одній теці.\n";
 
+        // Копія ключа в теці для учнів — цю теку не можна роздавати цілком
+        string keyWarning = Directory.EnumerateFiles(folder, "*" + TeacherKey.KeyFileExtension).Any()
+            ? "- **Увага:** у цій теці лежить копія ключа (.labkey). Не роздавайте теку цілком — лише архів або два файли.\n"
+            : "";
+
         ShowLog($"## ✔ Банк для учнів готовий ({bank.Questions.Count} питань)\n" +
-                $"- Файл банку: `{datPath}`\n" + zipLine +
+                $"- Файл банку: `{datPath}`\n" + zipLine + keyWarning +
                 $"- Ключ підпису № `{key.Id}`. Файли учнів з цим банком будуть позначені «✔ Справжній».\n" +
                 "- Роздайте учням **архів**, а не посилання на сторінку програми: без вашого банку результати будуть «⚠ Загальний ключ».\n" +
                 "- Зробіть копію ключа: «Зберегти копію ключа…».");
+    }
+
+    // Чому тека небезпечна для ключа (null — тека звичайна): туди учні здають файли або звідти роздають банк
+    public static string? StudentFolderReason(string folder)
+    {
+        if (string.Equals(Path.GetFileName(folder.TrimEnd('\\', '/')), ResultFile.FolderName, StringComparison.OrdinalIgnoreCase))
+        {
+            return $"куди програма учня зберігає результати («{ResultFile.FolderName}»)";
+        }
+
+        if (!Directory.Exists(folder))
+        {
+            return null;
+        }
+
+        if (Directory.EnumerateFiles(folder, "Результат_*.json").Any())
+        {
+            return "де лежать файли результатів учнів";
+        }
+
+        if (File.Exists(Path.Combine(folder, BankFile.FileName)) || File.Exists(Path.Combine(folder, StudentZipName)))
+        {
+            return "де лежить банк або архів для учнів";
+        }
+
+        return null;
     }
 
     // ZIP «для учнів»: цей exe + questions.dat. Лише з опублікованої програми (один exe):

@@ -107,8 +107,9 @@ internal class Scenarios
 
         Directory.CreateDirectory(output);
         tools.PrepareForStudents(QuestionBank.CurrentJson, output);
-        await ui.ShotAsync(tools, 49);
+
         CheckBankPackage(Path.Combine(output, BankFile.FileName));
+        BankDiagnosticsCheck.Run();
 
         // Перевірка банку з помилками (на основі шаблону: чужа категорія і номер питання, що повторюється)
         string broken = Path.Combine(output, "банк_з_помилками.json");
@@ -117,6 +118,12 @@ internal class Scenarios
             .Replace("\"id\": 5,", "\"id\": 4,"));
         tools.CheckBankFile(broken);
         await ui.ShotAsync(tools, 50);
+
+        // Помилка запису (пропущена лапка в теорії) — як її пояснює програма
+        string syntax = Path.Combine(output, "банк_без_лапки.json");
+        File.WriteAllText(syntax, QuestionBank.ReadTemplateJson().Replace("\"## Суть\",", "\"## Суть,"));
+        tools.CheckBankFile(syntax);
+        await ui.ShotAsync(tools, 53);
 
         tools.Close();
         await Task.Delay(300);
@@ -610,7 +617,7 @@ internal class Scenarios
         ExpectBankError(badGap, "Питання №13");
 
         string badJson = json.Replace("\"id\": 5,", "\"id\": 5");
-        ExpectBankError(badJson, "рядку");
+        ExpectBankError(badJson, "не вистачає коми");
 
         Console.WriteLine("  Перевірка банку: помилки в банку розпізнаються правильно");
     }

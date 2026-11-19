@@ -88,12 +88,14 @@ internal static class ShotList
             "відкрийте Forms\\TeacherForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
 
         // ---------- Етап 7 ----------
-        new(49, "49_bank_tools_prepared.png", "Вікно «Банк питань і ключ підпису»: банк для учнів підготовлено, створено ключ вчителя", 7),
+        new(49, "49_bank_tools_prepared.png", "Вікно «Банк питань і ключ підпису»: банк для учнів підготовлено, створено ключ вчителя", 7,
+            "підготуйте справжній банк для викладачки з опублікованого exe і зніміть вікно з повідомленням «Банк для учнів готовий»"),
         new(50, "50_bank_check_errors.png", "Перевірка файлу банку: помилки з номерами питань", 7),
         new(51, "51_designer_banktoolsform.png", "Форма BankToolsForm у конструкторі Visual Studio", 7,
             "відкрийте Forms\\BankToolsForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
         new(52, "52_designer_messageform.png", "Власне вікно повідомлень MessageForm у конструкторі Visual Studio", 7,
             "відкрийте Forms\\MessageForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
+        new(53, "53_bank_syntax_error.png", "Пояснення помилки запису в банку (пропущена лапка): рядок, поле і як виправити", 7),
     };
 
     public static Shot Get(int number)

@@ -397,14 +397,15 @@ namespace Lab_Testing
             //
             // colStatus
             //
-            colStatus.FillWeight = 13F;
+            colStatus.FillWeight = 15F;
+            colStatus.MinimumWidth = 160;
             colStatus.HeaderText = "Файл справжній";
             colStatus.Name = "colStatus";
             colStatus.ReadOnly = true;
             //
             // colFile
             //
-            colFile.FillWeight = 16F;
+            colFile.FillWeight = 14F;
             colFile.HeaderText = "Файл";
             colFile.Name = "colFile";
             colFile.ReadOnly = true;

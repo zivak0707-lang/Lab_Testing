@@ -100,13 +100,18 @@ internal static class Program
     // Корінь репозиторію — тека, де лежить Lab_Testing.slnx
     private static string FindRepoRoot()
     {
-        DirectoryInfo? dir = new(AppContext.BaseDirectory);
+        // Шукаємо від теки утиліти, а якщо її зібрано в іншу теку — від поточної теки
+        DirectoryInfo? dir = Find(new DirectoryInfo(AppContext.BaseDirectory)) ?? Find(new DirectoryInfo(Environment.CurrentDirectory));
+        return dir?.FullName ?? throw new DirectoryNotFoundException("Не знайдено Lab_Testing.slnx");
+    }
 
+    private static DirectoryInfo? Find(DirectoryInfo? dir)
+    {
         while (dir != null && !File.Exists(Path.Combine(dir.FullName, "Lab_Testing.slnx")))
         {
             dir = dir.Parent;
         }
 
-        return dir?.FullName ?? throw new DirectoryNotFoundException("Не знайдено Lab_Testing.slnx");
+        return dir;
     }
 }
