@@ -71,6 +71,148 @@ internal class Scenarios
         {
             await Stage5Async();
         }
+
+        if (maxStage >= 6)
+        {
+            await Stage6Async();
+        }
+    }
+
+    // ===================== Етап 6: режим викладача =====================
+
+    private async Task Stage6Async()
+    {
+        Console.WriteLine("Етап 6: режим викладача");
+        QuestionBankData bank = QuestionBank.Load(out string source);
+
+        // Вхід: вікно пароля і неправильний пароль
+        using (StartForm start = new(bank, source))
+        {
+            start.Show();
+            await Task.Delay(300);
+            start.BeginInvoke(() => Ui.ClickLink(start, "lnkTeacher"));
+
+            PasswordForm password = await Ui.WaitForFormAsync<PasswordForm>(37);
+            await ui.ShotAsync(password, 37);
+            Ui.SetText(password, "txtPassword", "123456");
+            Ui.Click(password, "btnOk");
+            await ui.ShotAsync(password, 38);
+            password.Close();
+            await Task.Delay(300);
+            start.Close();
+        }
+
+        // Вікно викладача (порожнє) і його діалоги
+        TeacherForm teacher = new(bank);
+        teacher.Show();
+        await Task.Delay(400);
+        await ui.ShotAsync(teacher, 39);
+        await ui.DialogShotAsync(teacher, () => Ui.Click(teacher, "btnOpenFiles"), 40, WindowCapture.IDCANCEL);
+        await ui.FormShotAsync<ChangePasswordForm>(teacher, () => Ui.Click(teacher, "btnChangePassword"), 41);
+
+        // Зразкові файли (у тимчасовій теці): 3 справжні, 1 змінений, 1 зіпсований і сторонній .json
+        (string folder, string damaged) = await MakeSampleFilesAsync(bank);
+        teacher.LoadFiles(new[] { folder });
+        CheckEntries(teacher, valid: 3, modified: 1, damaged: 0, "відкриття теки");
+
+        teacher.LoadFiles(new[] { damaged });
+        CheckEntries(teacher, valid: 3, modified: 1, damaged: 1, "відкриття пошкодженого файлу");
+
+        await ui.DialogShotAsync(teacher, () => Ui.Click(teacher, "btnExport"), 42, WindowCapture.IDCANCEL);
+
+        // Подвійний клік по рядку зміненого файлу -> попередження («Ні» — не відкривати)
+        DataGridView grid = Ui.Find<DataGridView>(teacher, "dgvResults");
+        int modifiedRow = grid.Rows.Cast<DataGridViewRow>()
+            .First(r => r.Tag is ResultEntry { Status: ResultFileStatus.Modified }).Index;
+        await ui.DialogShotAsync(teacher, () => Ui.DoubleClickCell(grid, modifiedRow), 43, WindowCapture.IDNO);
+
+        CheckCsv(teacher);
+        teacher.Close();
+    }
+
+    // Складає контрольні трьох учнів і зберігає їхні файли в тимчасову теку (не на ваш робочий стіл)
+    private async Task<(string Folder, string Damaged)> MakeSampleFilesAsync(QuestionBankData bank)
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "Lab_Testing_зразки");
+
+        if (Directory.Exists(folder))
+        {
+            Directory.Delete(folder, true);
+        }
+
+        Directory.CreateDirectory(folder);
+        string? tamperedSource = null;
+
+        (string Name, Action<QuestionView> Fill)[] students =
+        {
+            ("Петренко Андрій", Answers.FillCorrect),
+            ("Коваль Марія", Answers.FillWithMistakes),
+            ("Шевчук Олег", _ => { })
+        };
+
+        for (int s = 0; s < students.Length; s++)
+        {
+            TestForm form = new(new TestSession(bank, students[s].Name, StudentGroup, TestMode.Control, 100 + s));
+            form.Show();
+
+            for (int i = 0; i < 5; i++)
+            {
+                form.ShowQuestion(i);
+                students[s].Fill(form.CurrentView);
+            }
+
+            await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
+            TestResult result = form.Result ?? throw new InvalidOperationException("Контрольна не завершилася");
+
+            string json = ResultFile.ToSignedJson(result);
+            File.WriteAllText(Path.Combine(folder, ResultFile.MakeFileName(result)), json);
+            tamperedSource ??= s == 1 ? json : null;
+        }
+
+        // Змінений файл (як після правки оцінки в Блокноті), зіпсований файл і сторонній .json у теці
+        string tampered = System.Text.RegularExpressions.Regex.Replace(tamperedSource!, "\"grade\": \\d+", "\"grade\": 12");
+        File.WriteAllText(Path.Combine(folder, "Результат_Коваль_Марія_471_змінений.json"), tampered);
+        File.WriteAllText(Path.Combine(folder, "questions.json"), QuestionBank.ReadEmbeddedJson());
+
+        string damaged = Path.Combine(Path.GetTempPath(), "Результат_зіпсований.json");
+        File.WriteAllText(damaged, "{ це вже не файл результату");
+
+        return (folder, damaged);
+    }
+
+    private static void CheckEntries(TeacherForm teacher, int valid, int modified, int damaged, string what)
+    {
+        int v = teacher.Entries.Count(e => e.Status == ResultFileStatus.Valid);
+        int m = teacher.Entries.Count(e => e.Status == ResultFileStatus.Modified);
+        int d = teacher.Entries.Count(e => e.Status == ResultFileStatus.Damaged);
+
+        if (v != valid || m != modified || d != damaged)
+        {
+            throw new InvalidOperationException($"Режим викладача ({what}): справжніх {v}, змінених {m}, пошкоджених {d}");
+        }
+    }
+
+    // CSV: UTF-8 з BOM, роздільник з регіональних налаштувань, кирилиця, рядок на кожен файл
+    private static void CheckCsv(TeacherForm teacher)
+    {
+        string csv = Path.Combine(Path.GetTempPath(), "Lab_Testing_зразки", "Результати.csv");
+        CsvExport.Save(csv, teacher.Entries);
+
+        byte[] bytes = File.ReadAllBytes(csv);
+        string text = new System.Text.UTF8Encoding(false).GetString(bytes, 3, bytes.Length - 3);
+        string[] lines = text.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+        string separator = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator;
+
+        bool bom = bytes.Length > 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
+
+        if (!bom || lines.Length != teacher.Entries.Count + 1 || !lines[0].StartsWith("№" + separator + "ПІБ") ||
+            !text.Contains("Коваль Марія") || !text.Contains("НІ — змінено"))
+        {
+            throw new InvalidOperationException("CSV для Excel сформовано неправильно");
+        }
+
+        Console.WriteLine($"  Режим викладача: 3 справжні, 1 змінений, 1 пошкоджений — розпізнано; " +
+                          $"CSV: BOM, роздільник «{separator}», кирилиця — правильно");
     }
 
     // ===================== Етап 5: контрольна, таймер, файл результату =====================
@@ -100,14 +242,12 @@ internal class Scenarios
         string json = ResultFile.ToSignedJson(result);
         CheckSignature(json);
 
-        // Файл результату — у тимчасову теку (не на ваш робочий стіл), і відкриваємо його в Блокноті
-        string folder = Path.Combine(Path.GetTempPath(), "Lab_Testing_знімки");
-        Directory.CreateDirectory(folder);
-        string file = Path.Combine(folder, ResultFile.MakeFileName(result));
-        File.WriteAllText(file, json, new System.Text.UTF8Encoding(false));
-        await ui.NotepadShotAsync(file, 33);
+        // У файлі — звичайний текст без розмітки, немає пояснень, а з вимкненим розбором — і правильних відповідей
+        if (json.Contains('`'))
+        {
+            throw new InvalidOperationException("У файлі результату лишилася розмітка (зворотні лапки)");
+        }
 
-        // У файлі немає пояснень, а з вимкненим розбором — і правильних відповідей
         result.RemoveCorrectAnswers();
         string hidden = ResultFile.ToSignedJson(result);
 
@@ -117,7 +257,7 @@ internal class Scenarios
             throw new InvalidOperationException("У файлі результату є правильні відповіді, яких там не має бути");
         }
 
-        Console.WriteLine("  Файл результату: без пояснень; з вимкненим розбором — без правильних відповідей");
+        Console.WriteLine("  Файл результату: звичайний текст без розмітки, без пояснень; з вимкненим розбором — без правильних відповідей");
 
         // Таймер і «Час вийшов»: банк з обмеженням 1 хвилина (чекаємо її по-справжньому)
         QuestionBankData shortBank = QuestionBank.Load(out _);

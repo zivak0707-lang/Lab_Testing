@@ -15,9 +15,6 @@ public partial class StartForm : Form
         lblControlDesc.Text = lblControlDesc.Text.Replace("15 хв", $"{bank.Settings.ControlTimeMinutes} хв");
         lblAuthor.Text = $"Автор: {AppInfo.Author}, група {AppInfo.Group} · версія {AppInfo.Version}";
 
-        // Режим викладача з'явиться на етапі 6
-        lnkTeacher.Enabled = false;
-
         UpdateModeCards();
     }
 
@@ -197,9 +194,25 @@ public partial class StartForm : Form
         about.ShowDialog(this);
     }
 
+    // «Режим викладача»: спочатку пароль, потім вікно з результатами учнів
     private void LnkTeacher_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
     {
-        // Режим викладача буде додано на етапі 6
+        using (PasswordForm password = new())
+        {
+            if (password.ShowDialog(this) != DialogResult.OK)
+            {
+                return;
+            }
+        }
+
+        Hide();
+
+        using (TeacherForm teacher = new(bank))
+        {
+            teacher.ShowDialog();
+        }
+
+        Show();
     }
 
     // ===================== Допоміжне =====================

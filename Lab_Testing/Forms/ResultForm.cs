@@ -62,6 +62,15 @@ public partial class ResultForm : Form
         FormClosed += (_, _) => boldFont.Dispose();
     }
 
+    // Вигляд для викладача: заголовок і внизу — чи справжній файл
+    public void ShowForTeacher(ResultFileStatus status)
+    {
+        lblTitle.Text = status == ResultFileStatus.Valid ? "Результат учня" : "Результат учня (файл змінено!)";
+        lblFileInfo.Text = (status == ResultFileStatus.Valid ? "✔ Файл справжній: " : "✗ Файл змінено після збереження: ") +
+                           Path.GetFileName(filePath);
+        lblFileInfo.ForeColor = status == ResultFileStatus.Valid ? Theme.Success : Theme.Error;
+    }
+
     // «Відкрити теку з файлом»: Провідник з виділеним файлом результату
     private void BtnOpenFolder_Click(object? sender, EventArgs e)
     {

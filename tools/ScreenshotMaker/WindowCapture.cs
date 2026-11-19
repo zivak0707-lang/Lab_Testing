@@ -183,29 +183,6 @@ internal static class WindowCapture
         return found;
     }
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr childAfter, string? className, string? title);
-    [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
-
-    private const uint WM_GETTEXTLENGTH = 0x000E;
-    private const uint EM_SETSEL = 0x00B1;
-    private const uint EM_SCROLLCARET = 0x00B7;
-
-    // Прокручує текстове поле вікна (Блокнот) у самий кінець
-    public static void ScrollEditToEnd(IntPtr window)
-    {
-        IntPtr edit = FindWindowEx(window, IntPtr.Zero, "Edit", null);
-
-        if (edit == IntPtr.Zero)
-        {
-            return;
-        }
-
-        IntPtr length = SendMessage(edit, WM_GETTEXTLENGTH, IntPtr.Zero, IntPtr.Zero);
-        SendMessage(edit, EM_SETSEL, length, length);
-        SendMessage(edit, EM_SCROLLCARET, IntPtr.Zero, IntPtr.Zero);
-    }
-
     // Натискає кнопку діалогу (OK, Так, Ні, Скасувати)
     public static void PressButton(IntPtr dialog, int buttonId)
     {

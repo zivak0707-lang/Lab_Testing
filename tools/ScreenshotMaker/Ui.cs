@@ -45,6 +45,13 @@ internal class Ui
         onClick.Invoke(link, new object[] { new LinkLabelLinkClickedEventArgs(link.Links[0]) });
     }
 
+    // Подвійний клік по клітинці таблиці (подію CellDoubleClick викликаємо напряму)
+    public static void DoubleClickCell(DataGridView grid, int rowIndex)
+    {
+        MethodInfo onDoubleClick = typeof(DataGridView).GetMethod("OnCellDoubleClick", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        onDoubleClick.Invoke(grid, new object[] { new DataGridViewCellEventArgs(0, rowIndex) });
+    }
+
     // ===================== Знімки =====================
 
     // Знімок відкритої форми
@@ -127,43 +134,6 @@ internal class Ui
             }
 
             await Task.Delay(100);
-        }
-    }
-
-    // Знімок вікна Блокнота з відкритим файлом (Блокнот запускає утиліта і сама ж закриває)
-    public async Task NotepadShotAsync(string file, int number)
-    {
-        using Process notepad = Process.Start(new ProcessStartInfo("notepad.exe", $"\"{file}\"") { UseShellExecute = false })
-            ?? throw new InvalidOperationException("Не вдалося запустити Блокнот");
-
-        IntPtr window = IntPtr.Zero;
-        Stopwatch sw = Stopwatch.StartNew();
-
-        while (window == IntPtr.Zero && sw.ElapsedMilliseconds < 8000)
-        {
-            await Task.Delay(200);
-            window = WindowCapture.FindProcessWindow(notepad.Id, "Notepad");
-        }
-
-        if (window == IntPtr.Zero)
-        {
-            throw new TimeoutException($"Рисунок {number}: вікно Блокнота не з'явилося");
-        }
-
-        await Task.Delay(800);
-        WindowCapture.ScrollEditToEnd(window);   // кінець файлу: бали, оцінка і підпис
-        await Task.Delay(500);
-
-        using (Bitmap bmp = WindowCapture.Capture(window))
-        {
-            Save(bmp, number);
-        }
-
-        notepad.CloseMainWindow();
-
-        if (!notepad.WaitForExit(3000))
-        {
-            notepad.Kill();
         }
     }
 
