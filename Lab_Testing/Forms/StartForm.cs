@@ -111,14 +111,15 @@ public partial class StartForm : Form
         TestMode mode = rbTraining.Checked ? TestMode.Training : TestMode.Control;
         TestSession session = new(bank, name, group, mode);
 
-        // Етап 1: вікна тесту ще немає — показуємо, які питання випали
-        string list = string.Join("\n", session.Questions.Select((q, i) =>
-            $"{i + 1}. {q.Type.ToUkrainian()} — питання №{q.Id} «{q.Title}»"));
+        // Ховаємо стартову сторінку на час тесту і повертаємо її після закриття вікна тесту
+        Hide();
 
-        MessageBox.Show(this,
-            $"Учень: {session.StudentName}\nГрупа: {session.Group}\nРежим: {mode.ToUkrainian()}\n\n" +
-            $"Для вас обрано питання:\n{list}\n\nВікно тесту з'явиться на етапі 2.",
-            "Етап 1", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        using (TestForm test = new(session))
+        {
+            test.ShowDialog();
+        }
+
+        Show();
     }
 
     // ===================== Посилання внизу =====================

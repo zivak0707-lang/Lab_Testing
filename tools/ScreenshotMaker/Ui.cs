@@ -59,8 +59,9 @@ internal class Ui
     }
 
     // Знімок MessageBox або діалогу файлів: action відкриває діалог (через BeginInvoke, щоб сценарій
-    // не чекав, поки діалог закриється), утиліта чекає на нього, знімає і натискає кнопку closeButtonId
-    public async Task DialogShotAsync(Form owner, Action action, int number, int closeButtonId)
+    // не чекав, поки діалог закриється), утиліта чекає на нього, знімає і натискає кнопку closeButtonId.
+    // number == null — діалог лише закривається, без знімка
+    public async Task DialogShotAsync(Form owner, Action action, int? number, int closeButtonId)
     {
         HashSet<IntPtr> before = WindowCapture.FindDialogs().ToHashSet();
         owner.BeginInvoke(action);
@@ -80,9 +81,11 @@ internal class Ui
         }
 
         await Task.Delay(600);
-        using (Bitmap bmp = WindowCapture.Capture(dialog))
+
+        if (number != null)
         {
-            Save(bmp, number);
+            using Bitmap bmp = WindowCapture.Capture(dialog);
+            Save(bmp, number.Value);
         }
 
         WindowCapture.PressButton(dialog, closeButtonId);

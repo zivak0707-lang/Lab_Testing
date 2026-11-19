@@ -9,7 +9,7 @@ internal record Shot(int Number, string File, string Caption, int Stage, string?
 internal static class ShotList
 {
     // Останній реалізований етап
-    public const int CurrentStage = 1;
+    public const int CurrentStage = 2;
 
     public static readonly List<Shot> All = new()
     {
@@ -22,6 +22,17 @@ internal static class ShotList
             "відкрийте Forms\\StartForm.cs у Visual Studio (Shift+F7 — конструктор) і зніміть вікно VS з формою (Alt+PrtScr)"),
         new(6, "06_solution_explorer.png", "Структура проєкту Lab_Testing у вікні Solution Explorer", 1,
             "розгорніть у Solution Explorer теки Forms, Model, Data і зніміть цю панель"),
+
+        // ---------- Етап 2 ----------
+        new(7, "07_basket_empty.png", "Питання типу «Кошик» до відповіді", 2),
+        new(8, "08_basket_done.png", "Питання типу «Кошик»: зайві картки перенесено в кошик", 2),
+        new(9, "09_table_empty.png", "Питання типу «Таблиця відповідностей» до відповіді", 2),
+        new(10, "10_table_done.png", "Питання типу «Таблиця відповідностей» з розставленими відповідями", 2),
+        new(11, "11_drag_in_progress.png", "Перетягування картки: зона під курсором підсвічена", 2,
+            "почніть перетягувати картку, наведіть її на кошик або клітинку (зона стане блакитною) і, не відпускаючи миші, " +
+            "натисніть PrtScr; вставте знімок у Paint і обріжте до вікна програми"),
+        new(12, "12_designer_testform.png", "Форма TestForm у конструкторі Visual Studio", 2,
+            "відкрийте Forms\\TestForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
     };
 
     public static Shot Get(int number)
@@ -37,7 +48,9 @@ internal static class ShotList
         sb.AppendLine();
         sb.AppendLine("Автоматичні знімки робить утиліта `tools/ScreenshotMaker` (з кореня репозиторію:");
         sb.AppendLine("`dotnet run --project tools/ScreenshotMaker`). Вона відкриває справжні вікна програми і знімає");
-        sb.AppendLine("кожне вікно окремо (без робочого столу).");
+        sb.AppendLine("кожне вікно окремо (без робочого столу). Картки в знімках розкладаються тим самим методом `PlaceCard`,");
+        sb.AppendLine("який викликає обробник `DragDrop`. Справжнє перетягування мишею перевіряє окремий запуск");
+        sb.AppendLine("`dotnet run --project tools/ScreenshotMaker -- --drag-test` (курсор рухатиметься кілька секунд).");
         sb.AppendLine();
         sb.AppendLine("Рядки з позначкою **✋ вручну** — місця під ваші власні знімки: зробіть знімок за інструкцією");
         sb.AppendLine("і збережіть його в цю теку під указаною назвою файлу.");

@@ -15,7 +15,9 @@ internal static class Program
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
-        int maxStage = args.Length > 0 ? int.Parse(args[0]) : ShotList.CurrentStage;
+        bool dragTest = args.Contains("--drag-test");
+        string? stageArg = args.FirstOrDefault(a => !a.StartsWith("--"));
+        int maxStage = stageArg != null ? int.Parse(stageArg) : ShotList.CurrentStage;
         string outDir = Path.Combine(FindRepoRoot(), "docs", "screenshots");
         Directory.CreateDirectory(outDir);
         Console.WriteLine("Знімки -> " + outDir);
@@ -32,7 +34,14 @@ internal static class Program
 
             try
             {
-                await scenarios.RunAsync(maxStage);
+                if (dragTest)
+                {
+                    await scenarios.RunDragTestAsync();
+                }
+                else
+                {
+                    await scenarios.RunAsync(maxStage);
+                }
             }
             catch (Exception ex)
             {
