@@ -28,6 +28,8 @@ public static class Theme
     public static readonly Font TextFont = new("Segoe UI", 10.5F);                   // картки з текстом українською
     public static readonly Font SectionFont = new("Segoe UI", 10.5F, FontStyle.Bold); // заголовки областей
     public static readonly Font IconFont = new("Segoe MDL2 Assets", 30F);           // значки Windows 10
+    public static readonly Font NumberFont = new("Segoe UI", 11.5F, FontStyle.Bold); // номерки в кружечках
+    public static readonly Font ReadingFont = new("Segoe UI", 11.5F);               // текст із пропусками
 
     // Картки з кирилицею пишемо звичайним шрифтом, а код — моноширинним
     public static Font FontFor(string text)

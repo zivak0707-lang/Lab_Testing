@@ -8,20 +8,23 @@ namespace Lab_Testing;
 [DesignerCategory("Code")]
 public class CardLabel : Label
 {
-    // Текст відповіді, який несе картка
+    private bool isRound;
+
+    // Відповідь, яку несе картка (для номерка — текст елемента, а на картці видно лише номер)
     public string Value { get; }
 
     // Картка-шаблон у палітрі слів: при перетягуванні вона не переміщується, а копіюється (ефект Copy)
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool IsTemplate { get; set; }
 
-    public CardLabel(string value)
+    // value — відповідь; display — що написати на картці (якщо не вказано, то сама відповідь)
+    public CardLabel(string value, string? display = null)
     {
         Value = value;
-        Text = value;
+        Text = display ?? value;
         UseMnemonic = false;            // інакше "&&" показувалось би як один символ "&"
         AutoSize = true;
-        Font = Theme.FontFor(value);
+        Font = Theme.FontFor(Text);
         ForeColor = Theme.CardText;
         BackColor = Color.Transparent;  // кути картки прозорі, видно фон зони
         Cursor = Cursors.Hand;
@@ -32,22 +35,48 @@ public class CardLabel : Label
         MaximumSize = new Size(LogicalToDeviceUnits(520), 0);   // довгий текст переноситься на новий рядок
     }
 
-    // Малюємо картку самі: білий заокруглений прямокутник з рамкою і текстом по центру
+    // Кругла картка-номерок фіксованого розміру
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool IsRound
+    {
+        get => isRound;
+        set
+        {
+            isRound = value;
+
+            if (value)
+            {
+                AutoSize = false;
+                MinimumSize = Size.Empty;
+                Padding = Padding.Empty;
+                Size = new Size(LogicalToDeviceUnits(40), LogicalToDeviceUnits(40));
+                Font = Theme.NumberFont;
+            }
+        }
+    }
+
+    // Малюємо картку самі: білий заокруглений прямокутник (або коло) з рамкою і текстом по центру
     protected override void OnPaint(PaintEventArgs e)
     {
         Graphics g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
         Rectangle r = new(1, 1, Width - 3, Height - 3);
-        using GraphicsPath path = Theme.RoundedRect(r, LogicalToDeviceUnits(7));
-        using SolidBrush back = new(Color.White);
-        using Pen border = new(Theme.CardBorder, LogicalToDeviceUnits(2) * 0.75f);
+        using GraphicsPath path = isRound ? new GraphicsPath() : Theme.RoundedRect(r, LogicalToDeviceUnits(7));
+
+        if (isRound)
+        {
+            path.AddEllipse(r);
+        }
+
+        using SolidBrush back = new(isRound ? Theme.SelectedBack : Color.White);
+        using Pen border = new(isRound ? Theme.Accent : Theme.CardBorder, LogicalToDeviceUnits(2) * 0.75f);
 
         g.FillPath(back, path);
         g.DrawPath(border, path);
 
         Rectangle textRect = new(Padding.Left, Padding.Top, Width - Padding.Horizontal, Height - Padding.Vertical);
-        TextRenderer.DrawText(g, Text, Font, textRect, ForeColor,
+        TextRenderer.DrawText(g, Text, Font, textRect, isRound ? Theme.Primary : ForeColor,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
             TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
     }

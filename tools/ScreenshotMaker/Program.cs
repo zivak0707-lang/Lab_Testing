@@ -16,7 +16,12 @@ internal static class Program
         Application.SetCompatibleTextRenderingDefault(false);
 
         bool dragTest = args.Contains("--drag-test");
-        string? stageArg = args.FirstOrDefault(a => !a.StartsWith("--"));
+
+        // --all-questions <тека>: знімки всіх питань банку для перевірки розмітки
+        int allIndex = Array.IndexOf(args, "--all-questions");
+        string? allQuestionsDir = allIndex >= 0 && allIndex + 1 < args.Length ? args[allIndex + 1] : null;
+
+        string? stageArg = args.Where((a, i) => !a.StartsWith("--") && (allIndex < 0 || i != allIndex + 1)).FirstOrDefault();
         int maxStage = stageArg != null ? int.Parse(stageArg) : ShotList.CurrentStage;
         string outDir = Path.Combine(FindRepoRoot(), "docs", "screenshots");
         Directory.CreateDirectory(outDir);
@@ -37,6 +42,10 @@ internal static class Program
                 if (dragTest)
                 {
                     await scenarios.RunDragTestAsync();
+                }
+                else if (allQuestionsDir != null)
+                {
+                    await Scenarios.RunAllQuestionsAsync(allQuestionsDir);
                 }
                 else
                 {

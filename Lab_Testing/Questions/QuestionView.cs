@@ -45,7 +45,9 @@ public abstract class QuestionView : UserControl
         {
             QuestionType.Basket => new BasketView(question, random),
             QuestionType.Table => new TableView(question, random),
-            _ => new PlaceholderView(question, random)
+            QuestionType.Categories => new CategoriesView(question, random),
+            QuestionType.Gaps => new GapsView(question, random),
+            _ => new OrderView(question, random)
         };
     }
 
@@ -57,13 +59,31 @@ public abstract class QuestionView : UserControl
 
     // ===================== Створення карток і зон =====================
 
-    // Нова картка; натискання мишею на неї починає перетягування
-    protected CardLabel CreateCard(string value, bool isTemplate = false)
+    // Нова картка; натискання мишею на неї починає перетягування.
+    // display — інший текст на картці (наприклад, номер замість назви елемента)
+    protected CardLabel CreateCard(string value, string? display = null, bool isTemplate = false)
     {
-        CardLabel card = new(value) { IsTemplate = isTemplate };
+        CardLabel card = new(value, display) { IsTemplate = isTemplate };
         card.MouseDown += Card_MouseDown;
         cards.Add(card);
         return card;
+    }
+
+    // Прибирає картку-копію (слово з пропуску). Знищуємо її трохи пізніше, бо зараз
+    // ще може виконуватися її ж DoDragDrop
+    protected void RemoveCard(CardLabel card)
+    {
+        cards.Remove(card);
+        card.Parent?.Controls.Remove(card);
+
+        if (IsHandleCreated)
+        {
+            BeginInvoke(card.Dispose);
+        }
+        else
+        {
+            card.Dispose();
+        }
     }
 
     // Нова зона, яка приймає картки
@@ -226,23 +246,29 @@ public abstract class QuestionView : UserControl
         return list;
     }
 
-    // Область із заголовком: «Слайд», «Кошик», «Картки» ...
-    protected Panel CreateSection(string title, Control content)
+    // Заголовок області: «Слайд», «Кошик», «Картки» ...
+    protected Label CreateHeader(string title)
     {
-        Panel section = new() { Dock = DockStyle.Fill, Margin = new Padding(S(6)) };
-        Label header = new()
+        return new Label
         {
             Text = title,
             Dock = DockStyle.Top,
             Height = S(28),
             Font = Theme.SectionFont,
             ForeColor = Theme.Primary,
+            Margin = new Padding(S(6), S(6), S(6), 0),
             UseMnemonic = false
         };
+    }
+
+    // Область із заголовком і вмістом під ним
+    protected Panel CreateSection(string title, Control content)
+    {
+        Panel section = new() { Dock = DockStyle.Fill, Margin = new Padding(S(6)) };
 
         content.Dock = DockStyle.Fill;
-        section.Controls.Add(content);   // спочатку Fill, потім Top — так працює Dock
-        section.Controls.Add(header);
+        section.Controls.Add(content);              // спочатку Fill, потім Top — так працює Dock
+        section.Controls.Add(CreateHeader(title));
         return section;
     }
 

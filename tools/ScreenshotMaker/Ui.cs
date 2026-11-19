@@ -130,6 +130,17 @@ internal class Ui
         }
     }
 
+    // Знімок форми в довільний файл (для перегляду всіх питань, не для звіту)
+    public static async Task ShotToFileAsync(Form form, string path)
+    {
+        form.Activate();
+        form.Refresh();
+        await Task.Delay(400);
+
+        using Bitmap bmp = WindowCapture.Capture(form.Handle);
+        bmp.Save(path, ImageFormat.Png);
+    }
+
     private void Save(Bitmap bmp, int number)
     {
         Shot shot = ShotList.Get(number);

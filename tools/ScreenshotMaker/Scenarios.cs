@@ -18,7 +18,31 @@ internal class Scenarios
     // Самоперевірка Drag-and-Drop справжньою мишею (замість знімків)
     public Task RunDragTestAsync()
     {
-        return DragSelfTest.RunAsync(CreateSession(TestMode.Training, 1, 6));
+        return DragSelfTest.RunAsync(CreateSession(TestMode.Training, MainQuestionIds));
+    }
+
+    // Питання, які видно на знімках для звіту: кошик №1, таблиця №6, номерки №9, пропуски №13, кроки №20
+    private static readonly int[] MainQuestionIds = { 1, 6, 9, 13, 20 };
+
+    // Знімки всіх питань банку (порожніх і заповнених) у теку dir — для перевірки розмітки
+    public static async Task RunAllQuestionsAsync(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        QuestionBankData bank = QuestionBank.Load(out _);
+
+        foreach (Question question in bank.Questions)
+        {
+            TestForm form = new(CreateSession(TestMode.Training, question.Id));
+            form.Show();
+            form.ShowQuestion((int)question.Type);   // типи йдуть у тесті по порядку
+
+            await Ui.ShotToFileAsync(form, Path.Combine(dir, $"q{question.Id:00}_empty.png"));
+            Answers.FillCorrect(form.CurrentView);
+            await Ui.ShotToFileAsync(form, Path.Combine(dir, $"q{question.Id:00}_done.png"));
+
+            await new Ui(dir).DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
+            Console.WriteLine($"  питання №{question.Id}");
+        }
     }
 
     public async Task RunAsync(int maxStage)
@@ -31,6 +55,11 @@ internal class Scenarios
         if (maxStage >= 2)
         {
             await Stage2Async();
+        }
+
+        if (maxStage >= 3)
+        {
+            await Stage3Async();
         }
     }
 
@@ -58,19 +87,33 @@ internal class Scenarios
     {
         Console.WriteLine("Етап 2: вікно тесту, «Кошик» і «Таблиця»");
 
-        TestForm form = new(CreateSession(TestMode.Training, 1, 6));
+        await ShowEmptyAndDoneAsync(new[] { (0, 7), (1, 9) });
+    }
+
+    // ===================== Етап 3: номерки, пропуски, порядок кроків =====================
+
+    private async Task Stage3Async()
+    {
+        Console.WriteLine("Етап 3: «Номерки», «Пропуски», «Порядок кроків»");
+
+        await ShowEmptyAndDoneAsync(new[] { (2, 13), (3, 15), (4, 17) });
+    }
+
+    // Для кожної пари (номер питання в тесті, номер рисунка): знімок до відповіді (рисунок N)
+    // і з правильно розставленими відповідями (рисунок N + 1)
+    private async Task ShowEmptyAndDoneAsync((int Index, int Shot)[] questions)
+    {
+        TestForm form = new(CreateSession(TestMode.Training, MainQuestionIds));
         form.Show();
         await Task.Delay(300);
 
-        form.ShowQuestion(0);
-        await ui.ShotAsync(form, 7);
-        Answers.FillCorrect(form.CurrentView);
-        await ui.ShotAsync(form, 8);
-
-        form.ShowQuestion(1);
-        await ui.ShotAsync(form, 9);
-        Answers.FillCorrect(form.CurrentView);
-        await ui.ShotAsync(form, 10);
+        foreach ((int index, int shot) in questions)
+        {
+            form.ShowQuestion(index);
+            await ui.ShotAsync(form, shot);
+            Answers.FillCorrect(form.CurrentView);
+            await ui.ShotAsync(form, shot + 1);
+        }
 
         // Закриваємо тест кнопкою «Завершити тест» -> «Так»
         await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);

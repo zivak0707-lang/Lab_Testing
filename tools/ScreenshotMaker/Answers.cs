@@ -27,6 +27,35 @@ internal static class Answers
                 }
 
                 break;
+
+            case QuestionType.Categories:
+                foreach (QuestionItem item in q.Items)
+                {
+                    DropZone row = view.GetZone("cat:" + q.Categories.IndexOf(item.Category));
+                    view.PlaceCard(Card(view, item.Text), row, DragDropEffects.Move);
+                }
+
+                break;
+
+            case QuestionType.Gaps:
+                List<string> answers = q.GetGapAnswers();
+
+                for (int i = 0; i < answers.Count; i++)
+                {
+                    // Слово з палітри копіюється (Copy), як під час перетягування
+                    CardLabel template = view.Cards.First(c => c.IsTemplate && c.Value == answers[i]);
+                    view.PlaceCard(template, view.GetZone("gap:" + i), DragDropEffects.Copy);
+                }
+
+                break;
+
+            case QuestionType.Order:
+                for (int i = 0; i < q.Steps.Count; i++)
+                {
+                    view.PlaceCard(Card(view, q.Steps[i]), view.GetZone("slot:" + i), DragDropEffects.Move);
+                }
+
+                break;
         }
     }
 

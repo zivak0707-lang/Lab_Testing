@@ -9,7 +9,7 @@ internal record Shot(int Number, string File, string Caption, int Stage, string?
 internal static class ShotList
 {
     // Останній реалізований етап
-    public const int CurrentStage = 2;
+    public const int CurrentStage = 3;
 
     public static readonly List<Shot> All = new()
     {
@@ -33,6 +33,16 @@ internal static class ShotList
             "натисніть PrtScr; вставте знімок у Paint і обріжте до вікна програми"),
         new(12, "12_designer_testform.png", "Форма TestForm у конструкторі Visual Studio", 2,
             "відкрийте Forms\\TestForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
+
+        // ---------- Етап 3 ----------
+        new(13, "13_categories_empty.png", "Питання типу «Номерки на категорії» до відповіді", 3),
+        new(14, "14_categories_done.png", "Питання типу «Номерки на категорії»: номерки розкладено по рядках категорій", 3),
+        new(15, "15_gaps_empty.png", "Питання типу «Слова в пропуски» до відповіді", 3),
+        new(16, "16_gaps_done.png", "Питання типу «Слова в пропуски»: слова скопійовано в пропуски (break — двічі)", 3),
+        new(17, "17_order_empty.png", "Питання типу «Порядок кроків» до відповіді", 3),
+        new(18, "18_order_done.png", "Питання типу «Порядок кроків»: кроки алгоритму розставлено по порядку", 3),
+        new(19, "19_drag_copy.png", "Копіювання слова в пропуск: курсор зі знаком «+» (ефект Copy)", 3,
+            "почніть перетягувати слово з палітри в пропуск і, не відпускаючи миші, натисніть PrtScr; обріжте до вікна програми"),
     };
 
     public static Shot Get(int number)
@@ -52,21 +62,15 @@ internal static class ShotList
         sb.AppendLine("який викликає обробник `DragDrop`. Справжнє перетягування мишею перевіряє окремий запуск");
         sb.AppendLine("`dotnet run --project tools/ScreenshotMaker -- --drag-test` (курсор рухатиметься кілька секунд).");
         sb.AppendLine();
-        sb.AppendLine("Рядки з позначкою **✋ вручну** — місця під ваші власні знімки: зробіть знімок за інструкцією");
-        sb.AppendLine("і збережіть його в цю теку під указаною назвою файлу.");
+        sb.AppendLine("Рядки з позначкою **✋ вручну** — місця під знімки, які автор робить сам за інструкцією");
+        sb.AppendLine("і додає до звіту окремо (у цій теці їх немає).");
         sb.AppendLine();
         sb.AppendLine("| № | Файл | Підпис до рисунка | Етап | Як знято |");
         sb.AppendLine("|---|------|-------------------|------|----------|");
 
         foreach (Shot shot in All.Where(s => s.Stage <= maxStage))
         {
-            string how = "авто";
-
-            if (shot.Manual != null)
-            {
-                bool exists = File.Exists(Path.Combine(outDir, shot.File));
-                how = $"**✋ вручну**: {shot.Manual}" + (exists ? " — ✔ додано" : " — *ще не додано*");
-            }
+            string how = shot.Manual == null ? "авто" : $"**✋ вручну**: {shot.Manual}";
 
             sb.AppendLine($"| {shot.Number} | `{shot.File}` | Рисунок {shot.Number} – {shot.Caption} | {shot.Stage} | {how} |");
         }
