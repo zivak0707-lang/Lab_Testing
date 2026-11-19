@@ -61,6 +61,67 @@ internal class Scenarios
         {
             await Stage3Async();
         }
+
+        if (maxStage >= 4)
+        {
+            await Stage4Async();
+        }
+    }
+
+    // ===================== Етап 4: оцінювання, режим «Навчання», сторінка результату =====================
+
+    private async Task Stage4Async()
+    {
+        Console.WriteLine("Етап 4: перевірка в режимі «Навчання» і сторінка результату");
+        GradingSelfCheck.Run();
+
+        TestSession session = CreateSession(TestMode.Training, MainQuestionIds);
+        TestForm form = new(session);
+        form.Show();
+        await Task.Delay(300);
+
+        // Таблиця: теорія; потім відповідь з двома помилками і перевірка
+        form.ShowQuestion(1);
+        await ui.ShotAsync(form, 20);
+        Answers.FillWithMistakes(form.CurrentView);
+        Ui.Click(form, "btnCheck");
+        await ui.ShotAsync(form, 21);
+
+        // Пропуски: неправильне слово і порожній пропуск
+        form.ShowQuestion(3);
+        Answers.FillWithMistakes(form.CurrentView);
+        Ui.Click(form, "btnCheck");
+        await ui.ShotAsync(form, 22);
+
+        // Номерки: усе правильно
+        form.ShowQuestion(2);
+        Answers.FillCorrect(form.CurrentView);
+        Ui.Click(form, "btnCheck");
+        await ui.ShotAsync(form, 23);
+
+        // Питання 1 і 5 без відповіді — попередження при завершенні («Ні» — повертаємося до тесту)
+        await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), 24, WindowCapture.IDNO);
+
+        form.ShowQuestion(0);
+        Answers.FillWithMistakes(form.CurrentView);
+        form.ShowQuestion(4);
+        Answers.FillWithMistakes(form.CurrentView);
+
+        // Демонстраційний час проходження (інакше на знімку було б кілька секунд)
+        session.StartedAt = DateTime.Now.AddSeconds(-372);
+        await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
+
+        TestResult result = form.Result ?? throw new InvalidOperationException("Тест не завершився");
+
+        if (Math.Abs(result.TotalScore - 71.6) > 0.001 || result.Grade != 9)
+        {
+            throw new InvalidOperationException($"Очікувалось 71,6 бала і оцінка 9, а вийшло {result.TotalScore} і {result.Grade}");
+        }
+
+        using ResultForm resultForm = new(result, showReview: true);
+        resultForm.Show();
+        await ui.ShotAsync(resultForm, 25);
+        resultForm.Close();
     }
 
     // Спроба тесту, у яку потрапили саме ці питання (підбираємо seed, щоб знімки були відтворювані)

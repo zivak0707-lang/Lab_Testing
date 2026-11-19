@@ -72,6 +72,43 @@ public class TableView : QuestionView
     // Відповідь почата, якщо хоча б одна клітинка заповнена
     public override bool HasAnswer => cells.Any(c => c.Cards.Count > 0);
 
+    // Бали: частка правильно заповнених клітинок
+    public override QuestionResult Evaluate(bool highlight)
+    {
+        QuestionResult result = NewResult();
+        int correct = 0;
+
+        for (int i = 0; i < cells.Count; i++)
+        {
+            TableRow row = Question.Rows[i];
+            CardLabel? card = cells[i].Cards.FirstOrDefault();
+
+            if (highlight)
+            {
+                cells[i].Missing = card == null;
+            }
+
+            if (card == null)
+            {
+                result.Mistakes.Add($"«{row.Left}» — клітинку не заповнено (правильно: «{row.Answer}»)");
+            }
+            else if (card.Value == row.Answer)
+            {
+                correct++;
+                Mark(card, true, highlight);
+            }
+            else
+            {
+                Mark(card, false, highlight);
+                result.Mistakes.Add($"«{row.Left}» — покладено «{card.Value}», правильно: «{row.Answer}»");
+            }
+        }
+
+        result.Score = Grading.Points(correct, cells.Count);
+        result.Summary = $"правильно {correct} з {cells.Count}";
+        return result;
+    }
+
     private Label CreateHeaderCell(string text)
     {
         return new Label

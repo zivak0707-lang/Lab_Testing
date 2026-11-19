@@ -3,12 +3,21 @@ using System.Drawing.Drawing2D;
 
 namespace Lab_Testing;
 
+// Підсвітка картки після перевірки
+public enum CardState
+{
+    Normal,    // звичайна
+    Correct,   // правильно — зелена
+    Wrong      // помилка — червона
+}
+
 // Картка з відповіддю, яку перетягують мишею (ДЖЕРЕЛО Drag-and-Drop).
 // Перетягування запускається в QuestionView.Card_MouseDown викликом DoDragDrop
 [DesignerCategory("Code")]
 public class CardLabel : Label
 {
     private bool isRound;
+    private CardState state = CardState.Normal;
 
     // Відповідь, яку несе картка (для номерка — текст елемента, а на картці видно лише номер)
     public string Value { get; }
@@ -55,6 +64,18 @@ public class CardLabel : Label
         }
     }
 
+    // Підсвітка після перевірки (режим «Навчання»)
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public CardState State
+    {
+        get => state;
+        set
+        {
+            state = value;
+            Invalidate();
+        }
+    }
+
     // Малюємо картку самі: білий заокруглений прямокутник (або коло) з рамкою і текстом по центру
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -69,8 +90,23 @@ public class CardLabel : Label
             path.AddEllipse(r);
         }
 
-        using SolidBrush back = new(isRound ? Theme.SelectedBack : Color.White);
-        using Pen border = new(isRound ? Theme.Accent : Theme.CardBorder, LogicalToDeviceUnits(2) * 0.75f);
+        // Кольори залежать від підсвітки: зелена — правильно, червона — помилка
+        Color backColor = state switch
+        {
+            CardState.Correct => Theme.CorrectBack,
+            CardState.Wrong => Theme.WrongBack,
+            _ => isRound ? Theme.SelectedBack : Color.White
+        };
+        Color borderColor = state switch
+        {
+            CardState.Correct => Theme.Success,
+            CardState.Wrong => Theme.Error,
+            _ => isRound ? Theme.Accent : Theme.CardBorder
+        };
+        float borderWidth = LogicalToDeviceUnits(2) * (state == CardState.Normal ? 0.75f : 1.2f);
+
+        using SolidBrush back = new(backColor);
+        using Pen border = new(borderColor, borderWidth);
 
         g.FillPath(back, path);
         g.DrawPath(border, path);

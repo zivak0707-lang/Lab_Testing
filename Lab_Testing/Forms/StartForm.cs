@@ -113,10 +113,21 @@ public partial class StartForm : Form
 
         // Ховаємо стартову сторінку на час тесту і повертаємо її після закриття вікна тесту
         Hide();
+        TestResult? result;
 
         using (TestForm test = new(session))
         {
             test.ShowDialog();
+            result = test.Result;   // null — учень вийшов, не завершивши тест
+        }
+
+        if (result != null)
+        {
+            // Розбір помилок: у «Навчанні» завжди, у «Контрольній» — якщо дозволив викладач
+            bool showReview = mode == TestMode.Training || bank.Settings.ShowReviewAfterControl;
+
+            using ResultForm resultForm = new(result, showReview);
+            resultForm.ShowDialog();
         }
 
         Show();

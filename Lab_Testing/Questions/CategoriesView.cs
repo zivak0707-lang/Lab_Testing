@@ -46,11 +46,25 @@ public class CategoriesView : QuestionView
                 Text = $"{number}  —  {items[i].Text}",
                 Font = Theme.FontFor(items[i].Text),
                 AutoSize = true,
-                MaximumSize = new Size(S(330), 0),
+                MaximumSize = new Size(S(300), 0),
                 Margin = new Padding(S(4), S(3), 0, S(3)),
                 UseMnemonic = false
             });
         }
+
+        // Довгі пояснення переносяться за шириною колонки
+        legend.Resize += (_, _) =>
+        {
+            int width = legend.ClientSize.Width - S(12);
+
+            if (width > S(100))
+            {
+                foreach (Control label in legend.Controls)
+                {
+                    label.MaximumSize = new Size(width, 0);
+                }
+            }
+        };
 
         // Ліва частина: таблиця «категорія — зона для номерків»
         TableLayoutPanel table = new()
@@ -104,4 +118,38 @@ public class CategoriesView : QuestionView
 
     // Відповідь почата, якщо хоча б один номерок лежить на рядку категорії
     public override bool HasAnswer => rows.Any(r => r.Cards.Count > 0);
+
+    // Бали: частка номерків, покладених на правильний рядок
+    public override QuestionResult Evaluate(bool highlight)
+    {
+        QuestionResult result = NewResult();
+        int correct = 0;
+
+        // Перебираємо номерки по порядку номерів: 1, 2, 3 ...
+        foreach (CardLabel circle in Cards.OrderBy(c => int.Parse(c.Text)))
+        {
+            QuestionItem item = Question.Items.First(i => i.Text == circle.Value);
+            int rowIndex = rows.IndexOf((circle.Parent as DropZone)!);   // -1 — номерок ще в палітрі
+            string name = $"№{circle.Text} «{item.Text}»";
+
+            if (rowIndex < 0)
+            {
+                result.Mistakes.Add($"{name} не розкладено (правильно: «{item.Category}»)");
+            }
+            else if (Question.Categories[rowIndex] == item.Category)
+            {
+                correct++;
+                Mark(circle, true, highlight);
+            }
+            else
+            {
+                Mark(circle, false, highlight);
+                result.Mistakes.Add($"{name} покладено в «{Question.Categories[rowIndex]}», правильно: «{item.Category}»");
+            }
+        }
+
+        result.Score = Grading.Points(correct, Question.Items.Count);
+        result.Summary = $"правильно {correct} з {Question.Items.Count}";
+        return result;
+    }
 }

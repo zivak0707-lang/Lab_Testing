@@ -83,6 +83,43 @@ public class GapsView : QuestionView
     // Відповідь почата, якщо заповнено хоча б один пропуск
     public override bool HasAnswer => gaps.Any(g => g.Cards.Count > 0);
 
+    // Бали: частка правильно заповнених пропусків
+    public override QuestionResult Evaluate(bool highlight)
+    {
+        QuestionResult result = NewResult();
+        List<string> answers = Question.GetGapAnswers();
+        int correct = 0;
+
+        for (int i = 0; i < gaps.Count; i++)
+        {
+            CardLabel? card = gaps[i].Cards.FirstOrDefault();
+
+            if (highlight)
+            {
+                gaps[i].Missing = card == null;
+            }
+
+            if (card == null)
+            {
+                result.Mistakes.Add($"Пропуск {i + 1}: не заповнено (правильно: «{answers[i]}»)");
+            }
+            else if (card.Value == answers[i])
+            {
+                correct++;
+                Mark(card, true, highlight);
+            }
+            else
+            {
+                Mark(card, false, highlight);
+                result.Mistakes.Add($"Пропуск {i + 1}: вставлено «{card.Value}», правильно: «{answers[i]}»");
+            }
+        }
+
+        result.Score = Grading.Points(correct, gaps.Count);
+        result.Summary = $"правильно {correct} з {gaps.Count}";
+        return result;
+    }
+
     // У палітру можна повернути лише слово з пропуску (шаблон і так лежить у палітрі)
     protected override bool CanAccept(CardLabel card, DropZone zone)
     {

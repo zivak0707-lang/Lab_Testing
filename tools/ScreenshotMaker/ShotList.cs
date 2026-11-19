@@ -9,7 +9,7 @@ internal record Shot(int Number, string File, string Caption, int Stage, string?
 internal static class ShotList
 {
     // Останній реалізований етап
-    public const int CurrentStage = 3;
+    public const int CurrentStage = 4;
 
     public static readonly List<Shot> All = new()
     {
@@ -40,6 +40,16 @@ internal static class ShotList
         new(17, "17_order_empty.png", "Питання типу «Порядок кроків» до відповіді", 3),
         new(18, "18_order_done.png", "Питання типу «Порядок кроків»: кроки алгоритму розставлено по порядку", 3),
         new(19, "19_drag_copy.png", "Копіювання слова в пропуск: пропуск підсвічений, курсор зі знаком «+» (ефект Copy)", 3, DragTest: true),
+
+        // ---------- Етап 4 ----------
+        new(20, "20_training_theory.png", "Режим «Навчання»: питання з панеллю теорії", 4),
+        new(21, "21_training_check_table.png", "Перевірка в режимі «Навчання»: правильні картки зелені, помилкові червоні, бали і пояснення", 4),
+        new(22, "22_training_check_gaps.png", "Перевірка «пропусків»: неправильне слово червоне, незаповнений пропуск у червоній рамці", 4),
+        new(23, "23_training_check_ok.png", "Перевірка: усі відповіді правильні", 4),
+        new(24, "24_msg_unanswered.png", "Попередження під час завершення тесту: є питання без відповіді", 4),
+        new(25, "25_result_training.png", "Сторінка результату: бали за кожне питання, оцінка за 12-бальною шкалою, розбір помилок", 4),
+        new(26, "26_designer_resultform.png", "Форма ResultForm у конструкторі Visual Studio", 4,
+            "відкрийте Forms\\ResultForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
     };
 
     public static Shot Get(int number)

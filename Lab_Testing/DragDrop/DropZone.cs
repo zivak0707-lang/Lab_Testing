@@ -9,6 +9,7 @@ namespace Lab_Testing;
 public class DropZone : FlowLayoutPanel
 {
     private bool highlighted;
+    private bool missing;
     private Color normalBackColor = Theme.ZoneBack;
 
     // Назва зони: "slide", "basket", "palette", "row:0" ...
@@ -71,6 +72,18 @@ public class DropZone : FlowLayoutPanel
         }
     }
 
+    // Після перевірки: зону треба було заповнити, а вона порожня — червона рамка
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool Missing
+    {
+        get => missing;
+        set
+        {
+            missing = value;
+            Invalidate();
+        }
+    }
+
     // Картки, що зараз лежать у зоні
     public List<CardLabel> Cards => Controls.OfType<CardLabel>().ToList();
 
@@ -83,11 +96,15 @@ public class DropZone : FlowLayoutPanel
         Graphics g = e.Graphics;
         Rectangle r = new(0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
 
-        // Рамка: пунктирна сіра, а під час наведення картки — суцільна синя
-        using (Pen pen = new(highlighted ? Theme.Accent : Theme.ZoneBorder, highlighted ? 2 : 1))
+        // Рамка: пунктирна сіра, під час наведення картки — суцільна синя,
+        // порожня після перевірки — червона
+        bool showMissing = missing && Controls.Count == 0 && !highlighted;
+        Color borderColor = highlighted ? Theme.Accent : showMissing ? Theme.Error : Theme.ZoneBorder;
+
+        using (Pen pen = new(borderColor, highlighted || showMissing ? 2 : 1))
         {
             pen.DashStyle = highlighted ? DashStyle.Solid : DashStyle.Dash;
-            g.DrawRectangle(pen, r);
+            g.DrawRectangle(pen, new Rectangle(r.X, r.Y, r.Width - (int)pen.Width / 2, r.Height - (int)pen.Width / 2));
         }
 
         if (Controls.Count > 0)

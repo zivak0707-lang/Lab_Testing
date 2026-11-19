@@ -22,6 +22,10 @@ public static class Theme
     public static readonly Color CardText = Color.FromArgb(25, 35, 48);         // текст картки
     public static readonly Color StepCurrent = Color.White;                     // кнопка поточного питання
     public static readonly Color StepAnswered = Color.FromArgb(92, 148, 204);   // кнопка питання з відповіддю
+    public static readonly Color Warning = Color.FromArgb(191, 96, 0);          // помаранчевий: частково правильно
+    public static readonly Color CorrectBack = Color.FromArgb(226, 243, 228);   // фон правильної картки
+    public static readonly Color WrongBack = Color.FromArgb(252, 230, 228);     // фон помилкової картки
+    public static readonly Color TheoryBack = Color.FromArgb(255, 249, 232);    // фон панелі теорії
 
     // ---------- Шрифти ----------
     public static readonly Font CodeFont = new("Consolas", 11.5F, FontStyle.Bold);  // картки з кодом: int, &&, 3.14

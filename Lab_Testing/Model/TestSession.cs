@@ -28,6 +28,9 @@ public class TestSession
     // Унікальний номер спроби
     public Guid AttemptId { get; } = Guid.NewGuid();
 
+    // Коли учень почав відповідати (задається при відкритті вікна тесту)
+    public DateTime StartedAt { get; set; } = DateTime.Now;
+
     public TestSession(QuestionBankData bank, string studentName, string group, TestMode mode, int? seed = null)
     {
         StudentName = studentName;

@@ -15,15 +15,13 @@ public class OrderView : QuestionView
         palette.AutoScroll = true;
         HomeZone = palette;
 
-        int cardWidth = S(380);   // ширина картки кроку (довгий текст переноситься)
-
         foreach (string step in Shuffle(question.Steps))
         {
-            CardLabel card = CreateCard(step);
-            card.MaximumSize = new Size(cardWidth, 0);
-            card.MinimumSize = new Size(cardWidth, S(34));
-            palette.Controls.Add(card);
+            palette.Controls.Add(CreateCard(step));
         }
+
+        // Картки кроків однакової ширини — на всю ширину списку (довгий текст переноситься)
+        palette.Resize += (_, _) => FitCardWidths();
 
         // Ліва частина: номер кроку і клітинка для картки
         TableLayoutPanel table = new()
@@ -38,7 +36,7 @@ public class OrderView : QuestionView
 
         for (int i = 0; i < question.Steps.Count; i++)
         {
-            table.RowStyles.Add(new RowStyle(SizeType.Absolute, S(58)));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, S(66)));   // вміщує картку у два рядки
 
             Label number = new()
             {
@@ -69,6 +67,60 @@ public class OrderView : QuestionView
 
     // Відповідь почата, якщо хоча б одна клітинка заповнена
     public override bool HasAnswer => slots.Any(s => s.Cards.Count > 0);
+
+    // Бали: частка кроків, що стоять на своєму місці
+    public override QuestionResult Evaluate(bool highlight)
+    {
+        QuestionResult result = NewResult();
+        int correct = 0;
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            string expected = Question.Steps[i];
+            CardLabel? card = slots[i].Cards.FirstOrDefault();
+
+            if (highlight)
+            {
+                slots[i].Missing = card == null;
+            }
+
+            if (card == null)
+            {
+                result.Mistakes.Add($"Крок {i + 1}: клітинку не заповнено (правильно: «{expected}»)");
+            }
+            else if (card.Value == expected)
+            {
+                correct++;
+                Mark(card, true, highlight);
+            }
+            else
+            {
+                Mark(card, false, highlight);
+                result.Mistakes.Add($"Крок {i + 1}: стоїть «{card.Value}», правильно: «{expected}»");
+            }
+        }
+
+        result.Score = Grading.Points(correct, slots.Count);
+        result.Summary = $"на своєму місці {correct} з {slots.Count}";
+        return result;
+    }
+
+    // Ширина карток кроків підлаштовується під ширину списку кроків
+    private void FitCardWidths()
+    {
+        int width = palette.ClientSize.Width - palette.Padding.Horizontal - S(10) - SystemInformation.VerticalScrollBarWidth;
+
+        if (width < S(150))
+        {
+            return;
+        }
+
+        foreach (CardLabel card in Cards)
+        {
+            card.MinimumSize = new Size(width, S(34));
+            card.MaximumSize = new Size(width, 0);
+        }
+    }
 
     // Кладе крок у клітинку. Якщо клітинка зайнята: при перенесенні з іншої клітинки кроки
     // міняються місцями, а при перенесенні зі списку кроків старий крок повертається в список

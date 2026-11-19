@@ -29,4 +29,40 @@ public class BasketView : QuestionView
 
     // Відповідь почата, якщо в кошику є хоча б одна картка
     public override bool HasAnswer => basket.Cards.Count > 0;
+
+    // Бали: (правильно прибрані − помилково прибрані) / кількість зайвих.
+    // Тому, хто нічого не прибрав, і тому, хто прибрав усе підряд, балів не нараховується
+    public override QuestionResult Evaluate(bool highlight)
+    {
+        QuestionResult result = NewResult();
+        HashSet<string> extras = Question.Items.Where(i => !i.Keep).Select(i => i.Text).ToHashSet();
+        int removedCorrect = 0;
+        int removedWrong = 0;
+
+        foreach (CardLabel card in basket.Cards)
+        {
+            bool isExtra = extras.Contains(card.Value);
+            Mark(card, isExtra, highlight);
+
+            if (isExtra)
+            {
+                removedCorrect++;
+            }
+            else
+            {
+                removedWrong++;
+                result.Mistakes.Add($"«{card.Value}» прибрано в кошик, але ця картка потрібна — вона мала лишитися на слайді");
+            }
+        }
+
+        foreach (CardLabel card in slide.Cards.Where(c => extras.Contains(c.Value)))
+        {
+            result.Mistakes.Add($"«{card.Value}» залишилося на слайді, хоча це зайва картка");
+        }
+
+        result.Score = Grading.Points(removedCorrect - removedWrong, extras.Count);
+        result.Summary = $"прибрано правильно {removedCorrect} з {extras.Count}" +
+                         (removedWrong > 0 ? $", помилково {removedWrong}" : "");
+        return result;
+    }
 }

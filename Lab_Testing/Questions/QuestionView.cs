@@ -29,6 +29,10 @@ public abstract class QuestionView : UserControl
     // Чи учень уже почав відповідати на це питання
     public abstract bool HasAnswer { get; }
 
+    // Перевіряє відповідь: рахує бали і складає список помилок.
+    // highlight = true — ще й підсвічує картки зеленим/червоним (кнопка «Перевірити» в режимі «Навчання»)
+    public abstract QuestionResult Evaluate(bool highlight);
+
     protected QuestionView(Question question, Random random)
     {
         Question = question;
@@ -222,6 +226,44 @@ public abstract class QuestionView : UserControl
     protected void OnAnswerChanged()
     {
         AnswerChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // ===================== Перевірка =====================
+
+    // Прибирає підсвітку перевірки з усіх карток і зон
+    public void ClearCheck()
+    {
+        foreach (CardLabel card in cards)
+        {
+            card.State = CardState.Normal;
+        }
+
+        foreach (DropZone zone in zones)
+        {
+            zone.Missing = false;
+        }
+    }
+
+    // Заготовка результату з даними питання
+    protected QuestionResult NewResult()
+    {
+        return new QuestionResult
+        {
+            QuestionId = Question.Id,
+            Type = Question.Type,
+            Title = Question.Title,
+            Topic = Question.Topic,
+            Explanation = Question.Explanation
+        };
+    }
+
+    // Підсвічує картку як правильну або помилкову (лише якщо highlight = true)
+    protected static void Mark(CardLabel card, bool correct, bool highlight)
+    {
+        if (highlight)
+        {
+            card.State = correct ? CardState.Correct : CardState.Wrong;
+        }
     }
 
     // ===================== Допоміжне для розмітки =====================
