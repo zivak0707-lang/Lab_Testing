@@ -118,6 +118,14 @@ internal class Scenarios
         }
 
         Console.WriteLine($"  Підсумок тесту: {Grading.Format(result.TotalScore)} бала, оцінка {result.Grade} — як очікувалось");
+
+        // Попередній перегляд сторінки результату для перевірки розмітки (не для звіту, у тимчасову теку)
+        using ResultForm resultForm = new(result, showReview: true);
+        resultForm.Show();
+        string preview = Path.Combine(Path.GetTempPath(), "lab_testing_result_preview.png");
+        await Ui.ShotToFileAsync(resultForm, preview);
+        resultForm.Close();
+        Console.WriteLine("  Перегляд сторінки результату (не для звіту): " + preview);
     }
 
     // Спроба тесту, у яку потрапили саме ці питання (підбираємо seed, щоб знімки були відтворювані)
