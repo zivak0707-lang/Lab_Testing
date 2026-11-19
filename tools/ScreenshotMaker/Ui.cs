@@ -61,7 +61,7 @@ internal class Ui
     // Знімок MessageBox або діалогу файлів: action відкриває діалог (через BeginInvoke, щоб сценарій
     // не чекав, поки діалог закриється), утиліта чекає на нього, знімає і натискає кнопку closeButtonId.
     // number == null — діалог лише закривається, без знімка
-    public async Task DialogShotAsync(Form owner, Action action, int? number, int closeButtonId)
+    public async Task DialogShotAsync(Form owner, Action action, int? number, int closeButtonId, int timeoutMs = 8000)
     {
         HashSet<IntPtr> before = WindowCapture.FindDialogs().ToHashSet();
         owner.BeginInvoke(action);
@@ -71,7 +71,7 @@ internal class Ui
 
         while (dialog == IntPtr.Zero)
         {
-            if (sw.ElapsedMilliseconds > 8000)
+            if (sw.ElapsedMilliseconds > timeoutMs)
             {
                 throw new TimeoutException($"Рисунок {number}: діалог не з'явився");
             }
@@ -127,6 +127,43 @@ internal class Ui
             }
 
             await Task.Delay(100);
+        }
+    }
+
+    // Знімок вікна Блокнота з відкритим файлом (Блокнот запускає утиліта і сама ж закриває)
+    public async Task NotepadShotAsync(string file, int number)
+    {
+        using Process notepad = Process.Start(new ProcessStartInfo("notepad.exe", $"\"{file}\"") { UseShellExecute = false })
+            ?? throw new InvalidOperationException("Не вдалося запустити Блокнот");
+
+        IntPtr window = IntPtr.Zero;
+        Stopwatch sw = Stopwatch.StartNew();
+
+        while (window == IntPtr.Zero && sw.ElapsedMilliseconds < 8000)
+        {
+            await Task.Delay(200);
+            window = WindowCapture.FindProcessWindow(notepad.Id, "Notepad");
+        }
+
+        if (window == IntPtr.Zero)
+        {
+            throw new TimeoutException($"Рисунок {number}: вікно Блокнота не з'явилося");
+        }
+
+        await Task.Delay(800);
+        WindowCapture.ScrollEditToEnd(window);   // кінець файлу: бали, оцінка і підпис
+        await Task.Delay(500);
+
+        using (Bitmap bmp = WindowCapture.Capture(window))
+        {
+            Save(bmp, number);
+        }
+
+        notepad.CloseMainWindow();
+
+        if (!notepad.WaitForExit(3000))
+        {
+            notepad.Kill();
         }
     }
 

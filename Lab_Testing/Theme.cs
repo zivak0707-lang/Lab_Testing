@@ -27,6 +27,7 @@ public static class Theme
     public static readonly Color WrongBack = Color.FromArgb(252, 230, 228);     // фон помилкової картки
     public static readonly Color PartlyBack = Color.FromArgb(255, 238, 214);    // фон «частково правильно»
     public static readonly Color TheoryBack = Color.FromArgb(255, 249, 232);    // фон панелі теорії
+    public static readonly Color TimerWarning = Color.FromArgb(255, 150, 140);  // таймер в останні хвилини
 
     // ---------- Шрифти ----------
     public static readonly Font CodeFont = new("Consolas", 11.5F, FontStyle.Bold);  // картки з кодом: int, &&, 3.14

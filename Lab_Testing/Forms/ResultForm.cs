@@ -3,15 +3,19 @@ namespace Lab_Testing;
 // Сторінка результату: бали за кожне питання, оцінка за 12-бальною шкалою, розбір помилок
 public partial class ResultForm : Form
 {
-    private readonly Font boldFont;   // жирний шрифт для заголовків у розборі
+    private readonly Font boldFont;     // жирний шрифт для балів у таблиці
+    private readonly string? filePath;  // збережений файл результату (лише після контрольної)
 
-    // showReview = false — розбір помилок вимкнено викладачем (бали й оцінку видно завжди)
-    public ResultForm(TestResult result, bool showReview)
+    // showReview = false — розбір помилок вимкнено викладачем (бали й оцінку видно завжди);
+    // filePath — шлях до збереженого файлу результату контрольної
+    public ResultForm(TestResult result, bool showReview, string? filePath = null)
     {
         InitializeComponent();
         boldFont = new Font(rtbReview.Font, FontStyle.Bold);
+        this.filePath = filePath;
 
-        lblStudent.Text = $"{result.StudentName}  ·  група {result.Group}  ·  режим «{result.Mode.ToUkrainian()}»";
+        string attempt = result.AttemptNumber > 1 ? $"  ·  спроба №{result.AttemptNumber}" : "";
+        lblStudent.Text = $"{result.StudentName}  ·  група {result.Group}  ·  режим «{result.Mode.ToUkrainian()}»{attempt}";
         lblDetails.Text = $"{result.FinishedAt:dd.MM.yyyy HH:mm}  ·  час проходження: {Grading.FormatDuration(result.Duration)}" +
                           (result.FinishedByTimeout ? "  ·  завершено, бо скінчився час" : "");
 
@@ -20,9 +24,20 @@ public partial class ResultForm : Form
         lblScore.Text = $"{Grading.Format(result.TotalScore)} з {Grading.Format(result.MaxScore)} балів  ·  " +
                         $"{Grading.Format(result.Percent)} %";
 
-        lblFileInfo.Text = result.Mode == TestMode.Training
-            ? "Режим «Навчання»: результат не зберігається у файл."
-            : "";
+        // Внизу: де лежить файл результату (контрольна) або що результат не зберігається (навчання)
+        if (result.Mode == TestMode.Training)
+        {
+            lblFileInfo.Text = "Режим «Навчання»: результат не зберігається у файл.";
+        }
+        else if (filePath != null)
+        {
+            lblFileInfo.Text = "Файл для викладача: " + filePath;
+            btnOpenFolder.Visible = true;
+        }
+        else
+        {
+            lblFileInfo.Text = "Файл результату не збережено — покажіть цю сторінку викладачеві.";
+        }
 
         FillTable(result);
 
@@ -47,10 +62,13 @@ public partial class ResultForm : Form
         FormClosed += (_, _) => boldFont.Dispose();
     }
 
-    // Текст про файл результату внизу сторінки (для контрольної — шлях до збереженого файлу)
-    public void SetFileInfo(string text)
+    // «Відкрити теку з файлом»: Провідник з виділеним файлом результату
+    private void BtnOpenFolder_Click(object? sender, EventArgs e)
     {
-        lblFileInfo.Text = text;
+        if (filePath != null && File.Exists(filePath))
+        {
+            ResultFile.ShowInExplorer(filePath);
+        }
     }
 
     // Таблиця: по рядку на кожне питання; колір балів — зелений, помаранчевий або червоний

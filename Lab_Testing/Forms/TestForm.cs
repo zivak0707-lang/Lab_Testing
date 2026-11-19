@@ -37,6 +37,15 @@ public partial class TestForm : Form
         CreateStepButtons();
         ShowQuestion(0);
         session.StartedAt = DateTime.Now;
+
+        // Контрольна: таймер зворотного відліку
+        if (!training)
+        {
+            btnFinish.Text = "Завершити контрольну";
+            lblTimer.Visible = true;
+            UpdateTimer();
+            controlTimer.Start();
+        }
     }
 
     // Підсумок тесту (з'являється після завершення; null — учень вийшов, не завершивши)
@@ -318,23 +327,83 @@ public partial class TestForm : Form
 
     // ===================== Завершення =====================
 
+    private bool IsControl => session.Mode == TestMode.Control;
+
     private void BtnFinish_Click(object? sender, EventArgs e)
     {
-        int unanswered = views.Count(v => !v.HasAnswer);
-        string warning = unanswered > 0 ? $"Питань без відповіді: {unanswered}.\n\n" : "";
-
-        DialogResult answer = MessageBox.Show(this, warning + "Завершити тест і подивитися результат?", "Завершення тесту",
-            MessageBoxButtons.YesNo, unanswered > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Question);
-
-        if (answer == DialogResult.Yes)
+        if (AskFinish())
         {
             Finish(byTimeout: false);
         }
     }
 
+    // Запитує, чи завершити тест; попереджає про питання без відповіді
+    private bool AskFinish()
+    {
+        int unanswered = views.Count(v => !v.HasAnswer);
+        string warning = unanswered > 0 ? $"Питань без відповіді: {unanswered}.\n\n" : "";
+        string question = IsControl
+            ? "Завершити контрольну? Після завершення змінити відповіді не можна, а результат буде збережено у файл."
+            : "Завершити тест і подивитися результат?";
+
+        DialogResult answer = MessageBox.Show(this, warning + question, IsControl ? "Завершення контрольної" : "Завершення тесту",
+            MessageBoxButtons.YesNo, unanswered > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Question);
+
+        return answer == DialogResult.Yes;
+    }
+
+    // ===================== Таймер контрольної =====================
+
+    // Щосекунди оновлюємо залишок часу
+    private void ControlTimer_Tick(object? sender, EventArgs e)
+    {
+        UpdateTimer();
+    }
+
+    // Залишок рахуємо від часу початку (а не кількості тиків), тому таймер не «пливе»
+    private void UpdateTimer()
+    {
+        TimeSpan left = session.StartedAt.AddMinutes(session.Settings.ControlTimeMinutes) - DateTime.Now;
+
+        if (left <= TimeSpan.Zero)
+        {
+            lblTimer.Text = "Залишилось 00:00";
+            TimeIsUp();
+            return;
+        }
+
+        lblTimer.Text = $"Залишилось {(int)left.TotalMinutes:00}:{left.Seconds:00}";
+        lblTimer.ForeColor = left.TotalSeconds <= 120 ? Theme.TimerWarning : Color.White;   // останні 2 хвилини — червоний
+    }
+
+    // Час вийшов: відповіді фіксуємо одразу, а потім повідомляємо учня
+    private void TimeIsUp()
+    {
+        controlTimer.Stop();
+        PrepareResult(byTimeout: true);
+
+        MessageBox.Show(this, "Час вийшов! Контрольну завершено автоматично.\n\n" +
+                              "Враховано всі відповіді, які ви встигли дати. Результат буде збережено у файл.",
+            "Час вийшов", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+        DialogResult = DialogResult.OK;
+        Close();
+    }
+
+    // ===================== Підсумок =====================
+
     // Перевіряє всі питання, складає підсумок і закриває вікно
     private void Finish(bool byTimeout)
     {
+        PrepareResult(byTimeout);
+        DialogResult = DialogResult.OK;
+        Close();
+    }
+
+    // Перевіряє всі питання і складає підсумок (після цього тест завершено — змінити відповіді не можна)
+    private void PrepareResult(bool byTimeout)
+    {
+        controlTimer.Stop();
         List<QuestionResult> results = views.Select(v => v.Evaluate(highlight: false)).ToList();
 
         // У «Навчанні» позначаємо питання, де учень відкривав правильну відповідь
@@ -347,16 +416,35 @@ public partial class TestForm : Form
         }
 
         Result = TestResult.Create(session, results, DateTime.Now, byTimeout);
-
         finished = true;
-        DialogResult = DialogResult.OK;
-        Close();
     }
 
-    // Закриття вікна хрестиком до завершення тесту — запитуємо підтвердження
+    // Закриття вікна хрестиком до завершення тесту.
+    // «Навчання» — просто вихід. «Контрольна» — закрити вікно означає завершити контрольну:
+    // результат зберігається, повторно пройти цю спробу не можна
     private void TestForm_FormClosing(object? sender, FormClosingEventArgs e)
     {
-        if (finished || e.CloseReason != CloseReason.UserClosing)
+        if (finished)
+        {
+            return;
+        }
+
+        if (IsControl)
+        {
+            if (e.CloseReason != CloseReason.UserClosing || AskFinish())
+            {
+                PrepareResult(byTimeout: false);
+                DialogResult = DialogResult.OK;
+            }
+            else
+            {
+                e.Cancel = true;
+            }
+
+            return;
+        }
+
+        if (e.CloseReason != CloseReason.UserClosing)
         {
             return;
         }
@@ -370,6 +458,8 @@ public partial class TestForm : Form
     // Звільняємо подання питань, які зараз не показані у вікні
     private void TestForm_FormClosed(object? sender, FormClosedEventArgs e)
     {
+        controlTimer.Stop();
+
         foreach (QuestionView view in views)
         {
             view.Dispose();

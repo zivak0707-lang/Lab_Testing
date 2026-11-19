@@ -31,6 +31,9 @@ public class TestSession
     // Коли учень почав відповідати (задається при відкритті вікна тесту)
     public DateTime StartedAt { get; set; } = DateTime.Now;
 
+    // Номер спроби контрольної на цьому комп'ютері (1 — перша)
+    public int AttemptNumber { get; set; } = 1;
+
     public TestSession(QuestionBankData bank, string studentName, string group, TestMode mode, int? seed = null)
     {
         StudentName = studentName;

@@ -51,6 +51,7 @@ namespace Lab_Testing
             pnlBottom = new Panel();
             lblFileInfo = new Label();
             btnClose = new Button();
+            btnOpenFolder = new Button();
             pnlHeader.SuspendLayout();
             pnlGrade.SuspendLayout();
             pnlSummary.SuspendLayout();
@@ -277,6 +278,7 @@ namespace Lab_Testing
             pnlBottom.BackColor = Color.FromArgb(232, 236, 241);
             pnlBottom.Controls.Add(lblFileInfo);
             pnlBottom.Controls.Add(btnClose);
+            pnlBottom.Controls.Add(btnOpenFolder);
             pnlBottom.Dock = DockStyle.Bottom;
             pnlBottom.Location = new Point(0, 620);
             pnlBottom.Name = "pnlBottom";
@@ -289,11 +291,24 @@ namespace Lab_Testing
             lblFileInfo.ForeColor = Color.FromArgb(60, 72, 86);
             lblFileInfo.Location = new Point(24, 12);
             lblFileInfo.Name = "lblFileInfo";
-            lblFileInfo.Size = new Size(790, 36);
+            lblFileInfo.AutoEllipsis = true;
+            lblFileInfo.Size = new Size(590, 36);
             lblFileInfo.TabIndex = 0;
             lblFileInfo.Text = "Відомості про файл результату";
             lblFileInfo.TextAlign = ContentAlignment.MiddleLeft;
             //
+            // btnOpenFolder
+            // 
+            btnOpenFolder.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnOpenFolder.Location = new Point(630, 12);
+            btnOpenFolder.Name = "btnOpenFolder";
+            btnOpenFolder.Size = new Size(190, 36);
+            btnOpenFolder.TabIndex = 2;
+            btnOpenFolder.Text = "Відкрити теку з файлом";
+            btnOpenFolder.UseVisualStyleBackColor = true;
+            btnOpenFolder.Visible = false;
+            btnOpenFolder.Click += BtnOpenFolder_Click;
+            // 
             // btnClose
             //
             btnClose.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -365,5 +380,6 @@ namespace Lab_Testing
         private Panel pnlBottom;
         private Label lblFileInfo;
         private Button btnClose;
+        private Button btnOpenFolder;
     }
 }

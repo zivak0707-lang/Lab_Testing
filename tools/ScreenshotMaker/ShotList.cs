@@ -9,7 +9,7 @@ internal record Shot(int Number, string File, string Caption, int Stage, string?
 internal static class ShotList
 {
     // Останній реалізований етап
-    public const int CurrentStage = 4;
+    public const int CurrentStage = 5;
 
     public static readonly List<Shot> All = new()
     {
@@ -53,6 +53,19 @@ internal static class ShotList
             "відкрийте Forms\\ResultForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
         new(27, "27_training_check_basket.png", "Перевірка «Кошика»: на слайді лишилися зайві картки — помаранчева рамка і підказка, без назв карток", 4),
         new(28, "28_training_answer_shown.png", "Правильна відповідь, відкрита учнем кнопкою після двох спроб", 4),
+
+        // ---------- Етап 5 ----------
+        new(29, "29_control_question.png", "Режим «Контрольна»: таймер у шапці, без теорії і перевірки", 5),
+        new(30, "30_control_timer_red.png", "Таймер в останні 2 хвилини стає червоним (для знімка в банку задано 1 хвилину)", 5),
+        new(31, "31_control_confirm_finish.png", "Підтвердження завершення контрольної", 5),
+        new(32, "32_control_time_is_up.png", "Повідомлення «Час вийшов»: контрольну завершено автоматично (для знімка в банку задано 1 хвилину)", 5),
+        new(33, "33_result_file_notepad.png", "Кінець файлу результату контрольної в Блокноті: бали, оцінка і підпис signature", 5),
+        new(34, "34_msg_result_saved.png", "Повідомлення про збереження файлу результату на робочому столі", 5,
+            "пройдіть контрольну до кінця і зніміть повідомлення «Результат збережено» зі шляхом до файлу (Alt+PrtScr)"),
+        new(35, "35_result_control.png", "Сторінка результату контрольної з шляхом до файлу і кнопкою «Відкрити теку з файлом»", 5,
+            "після повідомлення про збереження зніміть сторінку результату (Alt+PrtScr)"),
+        new(36, "36_explorer_results_folder.png", "Тека «Результати тесту C#» на робочому столі з файлом результату", 5,
+            "натисніть «Відкрити теку з файлом» і зніміть вікно Провідника"),
     };
 
     public static Shot Get(int number)

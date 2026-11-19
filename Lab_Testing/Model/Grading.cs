@@ -14,7 +14,11 @@ public class QuestionResult
     public double MaxScore { get; set; } = Grading.QuestionMaxScore;
     public string Summary { get; set; } = "";               // коротко: «правильно 4 з 6»
     public List<string> Mistakes { get; set; } = new();     // опис кожної помилки разом із правильною відповіддю
-    public string Explanation { get; set; } = "";           // пояснення з банку
+
+    // Пояснення з банку (для сторінки результату). У файл результату не пишеться:
+    // учні пересилають файли, і пояснення з відповідями не повинні «гуляти» між ними
+    [JsonIgnore]
+    public string Explanation { get; set; } = "";
 
     // Що виправити — без правильної відповіді (для перевірки в режимі «Навчання»; у файл не зберігається)
     [JsonIgnore]

@@ -28,6 +28,7 @@ namespace Lab_Testing
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             pnlTop = new Panel();
             lblTimer = new Label();
             flpSteps = new FlowLayoutPanel();
@@ -53,6 +54,7 @@ namespace Lab_Testing
             btnFinish = new Button();
             btnNext = new Button();
             btnPrev = new Button();
+            controlTimer = new System.Windows.Forms.Timer(components);
             pnlTop.SuspendLayout();
             pnlQuestionHeader.SuspendLayout();
             pnlTheory.SuspendLayout();
@@ -78,13 +80,13 @@ namespace Lab_Testing
             // lblTimer
             //
             lblTimer.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            lblTimer.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            lblTimer.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
             lblTimer.ForeColor = Color.White;
-            lblTimer.Location = new Point(768, 12);
+            lblTimer.Location = new Point(694, 12);
             lblTimer.Name = "lblTimer";
-            lblTimer.Size = new Size(160, 32);
+            lblTimer.Size = new Size(240, 32);
             lblTimer.TabIndex = 2;
-            lblTimer.Text = "15:00";
+            lblTimer.Text = "Залишилось 15:00";
             lblTimer.TextAlign = ContentAlignment.MiddleRight;
             lblTimer.Visible = false;
             //
@@ -338,9 +340,9 @@ namespace Lab_Testing
             btnFinish.FlatStyle = FlatStyle.Flat;
             btnFinish.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold);
             btnFinish.ForeColor = Color.White;
-            btnFinish.Location = new Point(990, 14);
+            btnFinish.Location = new Point(950, 14);
             btnFinish.Name = "btnFinish";
-            btnFinish.Size = new Size(170, 36);
+            btnFinish.Size = new Size(210, 36);
             btnFinish.TabIndex = 4;
             btnFinish.Text = "Завершити тест";
             btnFinish.UseVisualStyleBackColor = false;
@@ -384,6 +386,11 @@ namespace Lab_Testing
             Text = "Тестування з програмування на C#";
             FormClosing += TestForm_FormClosing;
             FormClosed += TestForm_FormClosed;
+            // 
+            // controlTimer
+            // 
+            controlTimer.Interval = 1000;
+            controlTimer.Tick += ControlTimer_Tick;
             pnlTop.ResumeLayout(false);
             pnlTop.PerformLayout();
             pnlQuestionHeader.ResumeLayout(false);
@@ -423,5 +430,6 @@ namespace Lab_Testing
         private Button btnCheck;
         private Button btnReset;
         private Button btnFinish;
+        private System.Windows.Forms.Timer controlTimer;
     }
 }

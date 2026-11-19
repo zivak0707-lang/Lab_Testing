@@ -66,6 +66,107 @@ internal class Scenarios
         {
             await Stage4Async();
         }
+
+        if (maxStage >= 5)
+        {
+            await Stage5Async();
+        }
+    }
+
+    // ===================== Етап 5: контрольна, таймер, файл результату =====================
+
+    private async Task Stage5Async()
+    {
+        Console.WriteLine("Етап 5: контрольна і файл результату");
+
+        TestSession session = CreateSession(TestMode.Control, MainQuestionIds);
+        TestForm form = new(session);
+        form.Show();
+        await Task.Delay(300);
+
+        // Частину питань розв'язано, таймер у шапці
+        form.ShowQuestion(0);
+        Answers.FillCorrect(form.CurrentView);
+        form.ShowQuestion(2);
+        Answers.FillWithMistakes(form.CurrentView);
+        form.ShowQuestion(1);
+        Answers.FillWithMistakes(form.CurrentView);
+        await ui.ShotAsync(form, 29);
+
+        // «Завершити контрольну» -> підтвердження -> «Так»
+        await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), 31, WindowCapture.IDYES);
+        TestResult result = form.Result ?? throw new InvalidOperationException("Контрольна не завершилася");
+
+        string json = ResultFile.ToSignedJson(result);
+        CheckSignature(json);
+
+        // Файл результату — у тимчасову теку (не на ваш робочий стіл), і відкриваємо його в Блокноті
+        string folder = Path.Combine(Path.GetTempPath(), "Lab_Testing_знімки");
+        Directory.CreateDirectory(folder);
+        string file = Path.Combine(folder, ResultFile.MakeFileName(result));
+        File.WriteAllText(file, json, new System.Text.UTF8Encoding(false));
+        await ui.NotepadShotAsync(file, 33);
+
+        // У файлі немає пояснень, а з вимкненим розбором — і правильних відповідей
+        result.RemoveCorrectAnswers();
+        string hidden = ResultFile.ToSignedJson(result);
+
+        // Правильна відповідь у помилках завжди записана як «правильно: …» (підсумки «правильно 4 з 6» — це лише кількість)
+        if (json.Contains("\"explanation\"") || hidden.Contains("правильно:", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("У файлі результату є правильні відповіді, яких там не має бути");
+        }
+
+        Console.WriteLine("  Файл результату: без пояснень; з вимкненим розбором — без правильних відповідей");
+
+        // Таймер і «Час вийшов»: банк з обмеженням 1 хвилина (чекаємо її по-справжньому)
+        QuestionBankData shortBank = QuestionBank.Load(out _);
+        shortBank.Settings.ControlTimeMinutes = 1;
+        TestSession shortSession = new(shortBank, StudentName, StudentGroup, TestMode.Control, session.Seed);
+        TestForm shortForm = new(shortSession);
+        shortForm.Show();
+        shortForm.ShowQuestion(3);
+        Answers.FillCorrect(shortForm.CurrentView);
+        await Task.Delay(2000);
+        await ui.ShotAsync(shortForm, 30);
+
+        Console.WriteLine("  Чекаємо, поки мине 1 хвилина контрольної...");
+        await ui.DialogShotAsync(shortForm, () => { }, 32, WindowCapture.IDOK, timeoutMs: 75000);
+
+        if (shortForm.Result is not { FinishedByTimeout: true })
+        {
+            throw new InvalidOperationException("Після закінчення часу контрольна мала завершитися автоматично");
+        }
+
+        Console.WriteLine("  Таймер: після 1 хвилини контрольну завершено автоматично — правильно");
+    }
+
+    // Самоперевірка підпису: справжній файл, змінена оцінка, зіпсований файл; очищення назви файлу
+    private static void CheckSignature(string json)
+    {
+        if (ResultFile.Check(json, out _) != ResultFileStatus.Valid)
+        {
+            throw new InvalidOperationException("Щойно збережений файл не пройшов перевірку підпису");
+        }
+
+        string tampered = System.Text.RegularExpressions.Regex.Replace(json, "\"grade\": \\d+", "\"grade\": 12");
+
+        if (tampered == json || ResultFile.Check(tampered, out _) != ResultFileStatus.Modified)
+        {
+            throw new InvalidOperationException("Файл зі зміненою оцінкою не розпізнано як змінений");
+        }
+
+        if (ResultFile.Check("{ це не файл результату", out _) != ResultFileStatus.Damaged)
+        {
+            throw new InvalidOperationException("Зіпсований файл не розпізнано як пошкоджений");
+        }
+
+        if (ResultFile.Clean(" Іваненко  О.П. / \"471\"? ") != "Іваненко_О_П_471")
+        {
+            throw new InvalidOperationException("Недопустимі символи в назві файлу не очищено: " + ResultFile.Clean(" Іваненко  О.П. / \"471\"? "));
+        }
+
+        Console.WriteLine("  Підпис: справжній файл — «справжній», змінена оцінка — «змінено», зіпсований — «пошкоджений»");
     }
 
     // ===================== Етап 4: оцінювання, режим «Навчання», сторінка результату =====================

@@ -5,6 +5,7 @@ namespace Lab_Testing;
 // Підсумок однієї спроби: хто, коли, скільки балів за кожне питання, оцінка
 public class TestResult
 {
+    public string Format { get; set; } = "";           // позначка формату файлу результату
     public string StudentName { get; set; } = "";
     public string Group { get; set; } = "";
     public TestMode Mode { get; set; }
@@ -19,7 +20,10 @@ public class TestResult
     public int Grade { get; set; }                     // оцінка за 12-бальною шкалою
     public int Seed { get; set; }                      // з якого числа «перемішано» варіант
     public Guid AttemptId { get; set; }
+    public int AttemptNumber { get; set; } = 1;        // номер спроби контрольної на цьому комп'ютері
+    public string Computer { get; set; } = "";         // ім'я комп'ютера, на якому проходили тест
     public string AppVersion { get; set; } = "";
+    public string Signature { get; set; } = "";        // підпис файлу (див. ResultFile)
 
     [JsonIgnore]
     public TimeSpan Duration => TimeSpan.FromSeconds(DurationSeconds);
@@ -51,12 +55,26 @@ public class TestResult
             Grade = Grading.Grade(percent, session.Settings),
             Seed = session.Seed,
             AttemptId = session.AttemptId,
+            AttemptNumber = session.AttemptNumber,
+            Computer = Environment.MachineName,
             AppVersion = AppInfo.Version
         };
     }
 
+    // Замінює в помилках правильні відповіді на опис «що не так» (коли викладач вимкнув розбір після контрольної,
+    // правильних відповідей не має бути ні на екрані, ні у файлі)
+    public void RemoveCorrectAnswers()
+    {
+        foreach (QuestionResult question in Questions)
+        {
+            question.Mistakes = question.Issues.ToList();
+        }
+    }
+
+    // Час з точністю до секунди і без часового поясу: тоді файл записується однаково на будь-якому
+    // комп'ютері і підпис не залежить від налаштувань часу комп'ютера викладача
     private static DateTime TrimToSeconds(DateTime time)
     {
-        return new DateTime(time.Ticks - time.Ticks % TimeSpan.TicksPerSecond, time.Kind);
+        return new DateTime(time.Ticks - time.Ticks % TimeSpan.TicksPerSecond, DateTimeKind.Unspecified);
     }
 }

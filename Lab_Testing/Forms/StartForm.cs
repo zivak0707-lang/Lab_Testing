@@ -111,6 +111,20 @@ public partial class StartForm : Form
         TestMode mode = rbTraining.Checked ? TestMode.Training : TestMode.Control;
         TestSession session = new(bank, name, group, mode);
 
+        // Контрольна: якщо цей учень уже проходив її на цьому комп'ютері — попереджаємо,
+        // що спробу буде позначено як повторну (викладач побачить номер спроби)
+        if (mode == TestMode.Control)
+        {
+            int previous = ResultFile.CountPreviousAttempts(name, group);
+
+            if (previous > 0 && !ConfirmRepeatedAttempt(previous))
+            {
+                return;
+            }
+
+            session.AttemptNumber = previous + 1;
+        }
+
         // Ховаємо стартову сторінку на час тесту і повертаємо її після закриття вікна тесту
         Hide();
         TestResult? result;
@@ -118,19 +132,61 @@ public partial class StartForm : Form
         using (TestForm test = new(session))
         {
             test.ShowDialog();
-            result = test.Result;   // null — учень вийшов, не завершивши тест
+            result = test.Result;   // null — учень вийшов з «Навчання», не завершивши тест
         }
 
         if (result != null)
         {
-            // Розбір помилок: у «Навчанні» завжди, у «Контрольній» — якщо дозволив викладач
+            // Розбір помилок: у «Навчанні» завжди, у «Контрольній» — якщо дозволив викладач.
+            // Якщо не дозволив — правильних відповідей немає ні на екрані, ні у файлі
             bool showReview = mode == TestMode.Training || bank.Settings.ShowReviewAfterControl;
 
-            using ResultForm resultForm = new(result, showReview);
+            if (!showReview)
+            {
+                result.RemoveCorrectAnswers();
+            }
+
+            string? filePath = mode == TestMode.Control ? SaveResultFile(result) : null;
+
+            using ResultForm resultForm = new(result, showReview, filePath);
             resultForm.ShowDialog();
         }
 
         Show();
+    }
+
+    private bool ConfirmRepeatedAttempt(int previous)
+    {
+        DialogResult answer = MessageBox.Show(this,
+            $"Ви вже проходили контрольну на цьому комп'ютері (спроб: {previous}).\n\n" +
+            $"Нову спробу буде позначено як повторну (спроба №{previous + 1}) — викладач це побачить.\n\nПочати?",
+            "Повторна спроба", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+        return answer == DialogResult.Yes;
+    }
+
+    // Зберігає файл результату контрольної і показує учневі, де він лежить (null — зберегти не вдалося)
+    private string? SaveResultFile(TestResult result)
+    {
+        try
+        {
+            string path = ResultFile.Save(result);
+
+            MessageBox.Show(this,
+                $"Результат збережено у файл:\n\n{path}\n\n" +
+                "Надішліть цей файл викладачеві (через Classroom, Telegram тощо).\n" +
+                "Файл захищено підписом: якщо змінити в ньому хоч щось, викладач це побачить.",
+                "Результат збережено", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            return path;
+        }
+        catch (IOException ex)
+        {
+            MessageBox.Show(this, "Не вдалося зберегти файл результату.\n\n" + ex.Message +
+                                  "\n\nПокажіть цей результат викладачеві на екрані.",
+                "Помилка збереження", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return null;
+        }
     }
 
     // ===================== Посилання внизу =====================
