@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Lab_Testing;
 
 namespace ScreenshotMaker;
@@ -40,7 +41,7 @@ internal class Scenarios
             Answers.FillCorrect(form.CurrentView);
             await Ui.ShotToFileAsync(form, Path.Combine(dir, $"q{question.Id:00}_done.png"));
 
-            await new Ui(dir).DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
+            await new Ui(dir).MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), null, Answer.Yes);
             Console.WriteLine($"  питання №{question.Id}");
         }
     }
@@ -76,6 +77,87 @@ internal class Scenarios
         {
             await Stage6Async();
         }
+
+        if (maxStage >= 7)
+        {
+            await Stage7Async();
+        }
+    }
+
+    // ===================== Етап 7: банк для учнів і ключ вчителя =====================
+
+    private async Task Stage7Async()
+    {
+        Console.WriteLine("Етап 7: банк для учнів і ключ вчителя");
+        QuestionBankData bank = QuestionBank.Load(out string source);
+
+        TeacherForm teacher = new(bank, source);
+        teacher.Show();
+        await Task.Delay(300);
+        teacher.BeginInvoke(() => Ui.Click(teacher, "btnBankTools"));
+        BankToolsForm tools = await Ui.WaitForFormAsync<BankToolsForm>(49);
+
+        // Підготовка банку для учнів — у тимчасову теку
+        string output = Path.Combine(Path.GetTempPath(), "Lab_Testing_для_учнів");
+
+        if (Directory.Exists(output))
+        {
+            Directory.Delete(output, true);
+        }
+
+        Directory.CreateDirectory(output);
+        tools.PrepareForStudents(QuestionBank.CurrentJson, output);
+        await ui.ShotAsync(tools, 49);
+        CheckBankPackage(Path.Combine(output, BankFile.FileName));
+
+        // Перевірка банку з помилками (на основі шаблону: чужа категорія і номер питання, що повторюється)
+        string broken = Path.Combine(output, "банк_з_помилками.json");
+        File.WriteAllText(broken, QuestionBank.ReadTemplateJson()
+            .Replace("{ \"text\": \"\\\"Привіт\\\"\", \"category\": \"Текст\" }", "{ \"text\": \"\\\"Привіт\\\"\", \"category\": \"Рядки\" }")
+            .Replace("\"id\": 5,", "\"id\": 4,"));
+        tools.CheckBankFile(broken);
+        await ui.ShotAsync(tools, 50);
+
+        tools.Close();
+        await Task.Delay(300);
+        teacher.Close();
+    }
+
+    // questions.dat: розшифровується, містить банк і ключ, у Блокноті нечитабельний, пошкоджений — відхиляється
+    private static void CheckBankPackage(string datPath)
+    {
+        BankPackage package = BankFile.Read(datPath);
+        QuestionBankData bank = QuestionBank.Parse(package.BankJson, BankFile.FileName);
+        QuestionBank.Parse(QuestionBank.ReadTemplateJson(), "шаблон банку");
+
+        if (bank.Questions.Count != 20 || package.KeyId != TeacherKey.Current?.Id)
+        {
+            throw new InvalidOperationException("questions.dat містить не той банк або не той ключ");
+        }
+
+        string asText = System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(datPath));
+
+        if (asText.Contains("Цілочисельні") || asText.Contains("\"keep\""))
+        {
+            throw new InvalidOperationException("questions.dat читається як звичайний текст");
+        }
+
+        byte[] damaged = File.ReadAllBytes(datPath);
+        damaged[^1] ^= 0xFF;
+        string damagedPath = datPath + ".зіпсований";
+        File.WriteAllBytes(damagedPath, damaged);
+
+        try
+        {
+            BankFile.Read(damagedPath);
+            throw new InvalidOperationException("Зіпсований questions.dat не розпізнано");
+        }
+        catch (BankException)
+        {
+            // так і має бути
+        }
+
+        Console.WriteLine("  questions.dat: банк і ключ вчителя всередині, текст не читається, пошкодження помічено; шаблон банку правильний");
     }
 
     // ===================== Етап 6: режим викладача =====================
@@ -103,7 +185,7 @@ internal class Scenarios
         }
 
         // Вікно викладача (порожнє) і його діалоги
-        TeacherForm teacher = new(bank);
+        TeacherForm teacher = new(bank, source);
         teacher.Show();
         await Task.Delay(400);
         await ui.ShotAsync(teacher, 39);
@@ -113,10 +195,10 @@ internal class Scenarios
         // Зразкові файли (у тимчасовій теці): 3 справжні, 1 змінений, 1 зіпсований і сторонній .json
         (string folder, string damaged) = await MakeSampleFilesAsync(bank);
         teacher.LoadFiles(new[] { folder });
-        CheckEntries(teacher, valid: 3, modified: 1, damaged: 0, "відкриття теки");
+        CheckEntries(teacher, valid: 3, defaultKey: 1, modified: 1, damaged: 0, "відкриття теки");
 
         teacher.LoadFiles(new[] { damaged });
-        CheckEntries(teacher, valid: 3, modified: 1, damaged: 1, "відкриття пошкодженого файлу");
+        CheckEntries(teacher, valid: 3, defaultKey: 1, modified: 1, damaged: 1, "відкриття пошкодженого файлу");
 
         await ui.DialogShotAsync(teacher, () => Ui.Click(teacher, "btnExport"), 42, WindowCapture.IDCANCEL);
 
@@ -124,7 +206,7 @@ internal class Scenarios
         DataGridView grid = Ui.Find<DataGridView>(teacher, "dgvResults");
         int modifiedRow = grid.Rows.Cast<DataGridViewRow>()
             .First(r => r.Tag is ResultEntry { Status: ResultFileStatus.Modified }).Index;
-        await ui.DialogShotAsync(teacher, () => Ui.DoubleClickCell(grid, modifiedRow), 43, WindowCapture.IDNO);
+        await ui.MessageShotAsync(teacher, () => Ui.DoubleClickCell(grid, modifiedRow), 43, Answer.No);
 
         CheckCsv(teacher);
         teacher.Close();
@@ -142,6 +224,9 @@ internal class Scenarios
 
         Directory.CreateDirectory(folder);
         string? tamperedSource = null;
+
+        // Учні працюють з банком вчителя — файли підписано ключем вчителя
+        ResultFile.SigningKey = Convert.FromBase64String(TeacherKey.GetOrCreate().Key);
 
         (string Name, Action<QuestionView> Fill)[] students =
         {
@@ -161,13 +246,19 @@ internal class Scenarios
                 students[s].Fill(form.CurrentView);
             }
 
-            await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
+            await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), null, Answer.Yes);
             TestResult result = form.Result ?? throw new InvalidOperationException("Контрольна не завершилася");
 
             string json = ResultFile.ToSignedJson(result);
             File.WriteAllText(Path.Combine(folder, ResultFile.MakeFileName(result)), json);
             tamperedSource ??= s == 1 ? json : null;
         }
+
+        // Учень, що проходив тест без банку вчителя: той самий результат, але із загальним ключем
+        ResultFile.SigningKey = null;
+        TestResult withoutBank = JsonSerializer.Deserialize<TestResult>(tamperedSource!, QuestionBank.JsonOptions)!;
+        withoutBank.StudentName = "Бондар Ірина";
+        File.WriteAllText(Path.Combine(folder, ResultFile.MakeFileName(withoutBank)), ResultFile.ToSignedJson(withoutBank));
 
         // Змінений файл (як після правки оцінки в Блокноті), зіпсований файл і сторонній .json у теці
         string tampered = System.Text.RegularExpressions.Regex.Replace(tamperedSource!, "\"grade\": \\d+", "\"grade\": 12");
@@ -180,15 +271,17 @@ internal class Scenarios
         return (folder, damaged);
     }
 
-    private static void CheckEntries(TeacherForm teacher, int valid, int modified, int damaged, string what)
+    private static void CheckEntries(TeacherForm teacher, int valid, int defaultKey, int modified, int damaged, string what)
     {
         int v = teacher.Entries.Count(e => e.Status == ResultFileStatus.Valid);
         int m = teacher.Entries.Count(e => e.Status == ResultFileStatus.Modified);
         int d = teacher.Entries.Count(e => e.Status == ResultFileStatus.Damaged);
 
-        if (v != valid || m != modified || d != damaged)
+        int k = teacher.Entries.Count(e => e.Status == ResultFileStatus.DefaultKey);
+
+        if (v != valid || k != defaultKey || m != modified || d != damaged)
         {
-            throw new InvalidOperationException($"Режим викладача ({what}): справжніх {v}, змінених {m}, пошкоджених {d}");
+            throw new InvalidOperationException($"Режим викладача ({what}): справжніх {v}, загальний ключ {k}, змінених {m}, пошкоджених {d}");
         }
     }
 
@@ -211,7 +304,7 @@ internal class Scenarios
             throw new InvalidOperationException("CSV для Excel сформовано неправильно");
         }
 
-        Console.WriteLine($"  Режим викладача: 3 справжні, 1 змінений, 1 пошкоджений — розпізнано; " +
+        Console.WriteLine($"  Режим викладача: 3 справжні, 1 із загальним ключем, 1 змінений, 1 пошкоджений — розпізнано; " +
                           $"CSV: BOM, роздільник «{separator}», кирилиця — правильно");
     }
 
@@ -236,11 +329,11 @@ internal class Scenarios
         await ui.ShotAsync(form, 29);
 
         // «Завершити контрольну» -> підтвердження -> «Так»
-        await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), 31, WindowCapture.IDYES);
+        await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), 31, Answer.Yes);
         TestResult result = form.Result ?? throw new InvalidOperationException("Контрольна не завершилася");
 
+        CheckSignature(result);
         string json = ResultFile.ToSignedJson(result);
-        CheckSignature(json);
 
         // У файлі — звичайний текст без розмітки, немає пояснень, а з вимкненим розбором — і правильних відповідей
         if (json.Contains('`'))
@@ -271,7 +364,7 @@ internal class Scenarios
         await ui.ShotAsync(shortForm, 30);
 
         Console.WriteLine("  Чекаємо, поки мине 1 хвилина контрольної...");
-        await ui.DialogShotAsync(shortForm, () => { }, 32, WindowCapture.IDOK, timeoutMs: 75000);
+        await ui.MessageShotAsync(shortForm, () => { }, 32, Answer.Ok, timeoutMs: 75000);
 
         if (shortForm.Result is not { FinishedByTimeout: true })
         {
@@ -282,31 +375,52 @@ internal class Scenarios
     }
 
     // Самоперевірка підпису: справжній файл, змінена оцінка, зіпсований файл; очищення назви файлу
-    private static void CheckSignature(string json)
+    // Самоперевірка підпису з різними ключами (ключ вчителя створюється в тимчасовій теці даних утиліти)
+    private static void CheckSignature(TestResult result)
     {
-        if (ResultFile.Check(json, out _) != ResultFileStatus.Valid)
-        {
-            throw new InvalidOperationException("Щойно збережений файл не пройшов перевірку підпису");
-        }
+        // Учень без банку вчителя -> загальний ключ
+        ResultFile.SigningKey = null;
+        string defaultJson = ResultFile.ToSignedJson(result);
+        ExpectStatus(defaultJson, ResultFileStatus.DefaultKey, "файл із загальним ключем");
+        ExpectStatus(ChangeGrade(defaultJson), ResultFileStatus.Modified, "змінений файл із загальним ключем");
 
-        string tampered = System.Text.RegularExpressions.Regex.Replace(json, "\"grade\": \\d+", "\"grade\": 12");
+        // Учень з банком вчителя -> ключ вчителя
+        TeacherKey.KeyInfo key = TeacherKey.GetOrCreate();
+        ResultFile.SigningKey = Convert.FromBase64String(key.Key);
+        string teacherJson = ResultFile.ToSignedJson(result);
+        ExpectStatus(teacherJson, ResultFileStatus.Valid, "файл із ключем вчителя");
+        ExpectStatus(ChangeGrade(teacherJson), ResultFileStatus.Modified, "змінена оцінка у файлі з ключем вчителя");
+        ExpectStatus(teacherJson.Replace("\"format\"", "\"підробка\": 1,\n  \"format\""), ResultFileStatus.Modified, "додане поле");
 
-        if (tampered == json || ResultFile.Check(tampered, out _) != ResultFileStatus.Modified)
-        {
-            throw new InvalidOperationException("Файл зі зміненою оцінкою не розпізнано як змінений");
-        }
+        // Ключ, якого на цьому комп'ютері немає (банк іншого вчителя або підробка)
+        ResultFile.SigningKey = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+        ExpectStatus(ResultFile.ToSignedJson(result), ResultFileStatus.UnknownKey, "файл з чужим ключем");
 
-        if (ResultFile.Check("{ це не файл результату", out _) != ResultFileStatus.Damaged)
-        {
-            throw new InvalidOperationException("Зіпсований файл не розпізнано як пошкоджений");
-        }
+        ResultFile.SigningKey = null;
+        ExpectStatus("{ це не файл результату", ResultFileStatus.Damaged, "зіпсований файл");
 
         if (ResultFile.Clean(" Іваненко  О.П. / \"471\"? ") != "Іваненко_О_П_471")
         {
             throw new InvalidOperationException("Недопустимі символи в назві файлу не очищено: " + ResultFile.Clean(" Іваненко  О.П. / \"471\"? "));
         }
 
-        Console.WriteLine("  Підпис: справжній файл — «справжній», змінена оцінка — «змінено», зіпсований — «пошкоджений»");
+        Console.WriteLine("  Підпис: ключ вчителя — «справжній», загальний ключ, чужий ключ, змінений і зіпсований файли — розпізнано");
+    }
+
+    private static string ChangeGrade(string json)
+    {
+        string changed = System.Text.RegularExpressions.Regex.Replace(json, "\"grade\": \\d+", "\"grade\": 12");
+        return changed != json ? changed : throw new InvalidOperationException("Не вдалося змінити оцінку в зразку");
+    }
+
+    private static void ExpectStatus(string json, ResultFileStatus expected, string what)
+    {
+        ResultFileStatus actual = ResultFile.Check(json, out _);
+
+        if (actual != expected)
+        {
+            throw new InvalidOperationException($"Підпис ({what}): очікувався стан {expected}, а вийшов {actual}");
+        }
     }
 
     // ===================== Етап 4: оцінювання, режим «Навчання», сторінка результату =====================
@@ -340,7 +454,7 @@ internal class Scenarios
         await ui.ShotAsync(form, 23);
 
         // Питання 1 і 5 без відповіді — попередження при завершенні («Ні» — повертаємося до тесту)
-        await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), 24, WindowCapture.IDNO);
+        await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), 24, Answer.No);
 
         // Кошик: прибрано лише частину зайвих і одну потрібну — «невидимі» помилки на слайді
         form.ShowQuestion(0);
@@ -369,7 +483,7 @@ internal class Scenarios
         form.ShowQuestion(4);
         Answers.FillWithMistakes(form.CurrentView);
 
-        await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
+        await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), null, Answer.Yes);
 
         // Підсумок перевіряємо, але знімок сторінки результату (рисунок 25) автор робить сам:
         // автоматичний прохід триває кілька секунд, і такий час проходження на знімку виглядав би неправдоподібно
@@ -444,7 +558,7 @@ internal class Scenarios
         }
 
         // Закриваємо тест кнопкою «Завершити тест» -> «Так»
-        await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
+        await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), null, Answer.Yes);
     }
 
     // ===================== Етап 1: стартова сторінка =====================
@@ -476,7 +590,7 @@ internal class Scenarios
 
         // Порожнє ПІБ -> попередження
         Ui.SetText(form, "txtName", "");
-        await ui.DialogShotAsync(form, () => Ui.Click(form, "btnStart"), 3, WindowCapture.IDOK);
+        await ui.MessageShotAsync(form, () => Ui.Click(form, "btnStart"), 3, Answer.Ok);
         Ui.SetText(form, "txtName", StudentName);
 
         await ui.FormShotAsync<AboutForm>(form, () => Ui.ClickLink(form, "lnkAbout"), 4);

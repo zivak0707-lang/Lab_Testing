@@ -74,7 +74,7 @@ public class BasketView : QuestionView
             }
         }
 
-        result.Score = Grading.Points(removedCorrect - removedWrong, extras.Count);
+        SetScore(result, removedCorrect - removedWrong, extras.Count);
         result.Summary = $"прибрано правильно {removedCorrect} з {extras.Count}" +
                          (removedWrong > 0 ? $", помилково {removedWrong}" : "");
         return result;

@@ -7,12 +7,17 @@ namespace Lab_Testing;
 public partial class TeacherForm : Form
 {
     private readonly QuestionBankData bank;                 // банк — звідси пояснення для подробиць
+    private readonly string bankSource;                      // звідки взято банк (для вікна «Банк питань»)
     private readonly List<ResultEntry> entries = new();      // відкриті файли (у порядку відкриття)
 
-    public TeacherForm(QuestionBankData bank)
+    public TeacherForm(QuestionBankData bank, string bankSource)
     {
         InitializeComponent();
         this.bank = bank;
+        this.bankSource = bankSource;
+
+        // Ненав'язлива порада, якщо вхід виконано з типовим паролем
+        pnlPasswordHint.Visible = TeacherPassword.IsDefault;
 
         // Числа в таблиці — по-українському (13,3); дата і час — у звичному вигляді
         CultureInfo ukrainian = CultureInfo.GetCultureInfo("uk-UA");
@@ -160,7 +165,7 @@ public partial class TeacherForm : Form
         DataGridViewRow row = dgvResults.Rows[index];
         row.Tag = entry;
 
-        // Справжній — зелений напис; змінений — червоний рядок; пошкоджений — сірий рядок
+        // Справжній — зелений напис; не вашим ключем — жовтий рядок; змінений — червоний; пошкоджений — сірий
         DataGridViewCell status = row.Cells[colStatus.Index];
         status.Style.Font = Theme.SectionFont;
 
@@ -168,6 +173,12 @@ public partial class TeacherForm : Form
         {
             case ResultFileStatus.Valid:
                 status.Style.ForeColor = Theme.Success;
+                break;
+
+            case ResultFileStatus.DefaultKey:
+            case ResultFileStatus.UnknownKey:
+                row.DefaultCellStyle.BackColor = Theme.PartlyBack;
+                status.Style.ForeColor = Theme.Warning;
                 break;
 
             case ResultFileStatus.Modified:
@@ -182,13 +193,31 @@ public partial class TeacherForm : Form
         }
     }
 
-    private static string StatusText(ResultFileStatus status)
+    // Стан файлу коротко (для таблиці)
+    public static string StatusText(ResultFileStatus status)
     {
         return status switch
         {
             ResultFileStatus.Valid => "✔ Справжній",
+            ResultFileStatus.DefaultKey => "⚠ Загальний ключ",
+            ResultFileStatus.UnknownKey => "⚠ Інший ключ",
             ResultFileStatus.Modified => "✗ Змінено!",
             _ => "⚠ Пошкоджено"
+        };
+    }
+
+    // Чому файлу не можна повністю довіряти (для попередження)
+    public static string WarningText(ResultFileStatus status)
+    {
+        return status switch
+        {
+            ResultFileStatus.DefaultKey =>
+                "Увага: файл підписано загальним ключем програми, а не вашим. Учень проходив тест без вашого банку " +
+                "(questions.dat), тому справжність файлу гарантувати не можна.",
+            ResultFileStatus.UnknownKey =>
+                "Увага: файл підписано ключем, якого на цьому комп'ютері немає (банк іншого вчителя або підробка). " +
+                "Якщо це ваш давній ключ — відновіть його у вікні «Банк питань і ключ».",
+            _ => "Увага: цей файл змінено після того, як програма його зберегла, — дані в ньому недостовірні."
         };
     }
 
@@ -196,6 +225,7 @@ public partial class TeacherForm : Form
     private void UpdateView()
     {
         int valid = entries.Count(e => e.Status == ResultFileStatus.Valid);
+        int otherKey = entries.Count(e => e.Status is ResultFileStatus.DefaultKey or ResultFileStatus.UnknownKey);
         int modified = entries.Count(e => e.Status == ResultFileStatus.Modified);
         int damaged = entries.Count(e => e.Status == ResultFileStatus.Damaged);
 
@@ -207,8 +237,9 @@ public partial class TeacherForm : Form
 
         lblStatus.Text = entries.Count == 0
             ? "Файлів не відкрито"
-            : $"Файлів: {entries.Count}   ·   справжніх: {valid}   ·   змінених: {modified}   ·   пошкоджених: {damaged}";
-        lblStatus.ForeColor = modified + damaged > 0 ? Theme.Error : Theme.CardText;
+            : $"Файлів: {entries.Count}   ·   справжніх: {valid}   ·   не вашим ключем: {otherKey}   ·   " +
+              $"змінених: {modified}   ·   пошкоджених: {damaged}";
+        lblStatus.ForeColor = otherKey + modified + damaged > 0 ? Theme.Error : Theme.CardText;
     }
 
     private void DgvResults_Resize(object? sender, EventArgs e)
@@ -237,19 +268,16 @@ public partial class TeacherForm : Form
     {
         if (entry.Result == null)
         {
-            MessageBox.Show(this, $"Файл «{Path.GetFileName(entry.FilePath)}» не вдалося прочитати: " +
+            Dialogs.Warning(this, $"Файл «{Path.GetFileName(entry.FilePath)}» не вдалося прочитати: " +
                                   "він пошкоджений або це не файл результату тесту.",
-                "Пошкоджений файл", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                "Пошкоджений файл");
             return;
         }
 
-        if (entry.Status == ResultFileStatus.Modified)
+        // Файл не підтверджено вашим ключем — попереджаємо, чому дані можуть бути недостовірними
+        if (entry.Status != ResultFileStatus.Valid)
         {
-            DialogResult answer = MessageBox.Show(this,
-                "Увага: цей файл змінено після того, як програма його зберегла, — дані в ньому недостовірні.\n\n" +
-                "Показати вміст усе одно?", "Файл змінено", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-            if (answer != DialogResult.Yes)
+            if (!Dialogs.Ask(this, WarningText(entry.Status) + "\n\nПоказати вміст усе одно?", "Файл не підтверджено", warning: true))
             {
                 return;
             }
@@ -288,15 +316,12 @@ public partial class TeacherForm : Form
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, "Не вдалося зберегти файл. Можливо, він відкритий в Excel — закрийте його і спробуйте ще раз.\n\n" +
-                                  ex.Message, "Експорт", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Dialogs.Error(this, "Не вдалося зберегти файл. Можливо, він відкритий в Excel — закрийте його і спробуйте ще раз.\n\n" +
+                                ex.Message, "Експорт");
             return;
         }
 
-        DialogResult open = MessageBox.Show(this, $"Таблицю збережено:\n{saveFileDialog.FileName}\n\nВідкрити її зараз?",
-            "Експорт", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-
-        if (open == DialogResult.Yes)
+        if (Dialogs.Ask(this, $"Таблицю збережено:\n{saveFileDialog.FileName}\n\nВідкрити її зараз?", "Експорт"))
         {
             Process.Start(new ProcessStartInfo(saveFileDialog.FileName) { UseShellExecute = true });
         }
@@ -312,6 +337,27 @@ public partial class TeacherForm : Form
     private void BtnChangePassword_Click(object? sender, EventArgs e)
     {
         using ChangePasswordForm form = new();
+        form.ShowDialog(this);
+
+        // Пароль змінено — порада більше не потрібна
+        pnlPasswordHint.Visible = TeacherPassword.IsDefault;
+    }
+
+    private void LnkChangePassword_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
+    {
+        BtnChangePassword_Click(sender, e);
+    }
+
+    // «✕» на пораді: сховати до наступного входу
+    private void BtnCloseHint_Click(object? sender, EventArgs e)
+    {
+        pnlPasswordHint.Visible = false;
+    }
+
+    // Вікно «Банк питань і ключ»
+    private void BtnBankTools_Click(object? sender, EventArgs e)
+    {
+        using BankToolsForm form = new(bank, bankSource);
         form.ShowDialog(this);
     }
 }

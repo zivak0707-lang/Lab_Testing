@@ -9,7 +9,7 @@
     <RootNamespace>Lab_Testing</RootNamespace>
 
     <!-- Відомості про програму (видно у властивостях exe і у вікні «Про програму») -->
-    <Version>0.6.0</Version>
+    <Version>0.7.0</Version>
     <Product>Тестування з програмування на C#</Product>
     <Authors>Сергій Зівак</Authors>
     <Company>Сергій Зівак, група 471</Company>
@@ -21,6 +21,10 @@
     <!-- Банк питань вшивається всередину exe -->
     <None Remove="Data\questions.json" />
     <EmbeddedResource Include="Data\questions.json" LogicalName="Lab_Testing.questions.json" />
+
+    <!-- Шаблон банку для вчителя (кнопка «Зберегти шаблон банку») -->
+    <None Remove="Data\bank_template.json" />
+    <EmbeddedResource Include="Data\bank_template.json" LogicalName="Lab_Testing.bank_template.json" />
   </ItemGroup>
 
 </Project>

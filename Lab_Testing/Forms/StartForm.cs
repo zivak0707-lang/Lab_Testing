@@ -4,11 +4,13 @@ namespace Lab_Testing;
 public partial class StartForm : Form
 {
     private readonly QuestionBankData bank;   // завантажений банк питань
+    private readonly string bankSource;       // звідки взято банк
 
     public StartForm(QuestionBankData bank, string bankSource)
     {
         InitializeComponent();
         this.bank = bank;
+        this.bankSource = bankSource;
 
         // Тексти, які залежать від банку і версії програми
         lblBankInfo.Text = $"Банк питань: {bank.Questions.Count} питань ({bankSource})";
@@ -154,12 +156,10 @@ public partial class StartForm : Form
 
     private bool ConfirmRepeatedAttempt(int previous)
     {
-        DialogResult answer = MessageBox.Show(this,
+        return Dialogs.Ask(this,
             $"Ви вже проходили контрольну на цьому комп'ютері (спроб: {previous}).\n\n" +
             $"Нову спробу буде позначено як повторну (спроба №{previous + 1}) — викладач це побачить.\n\nПочати?",
-            "Повторна спроба", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-        return answer == DialogResult.Yes;
+            "Повторна спроба", warning: true);
     }
 
     // Зберігає файл результату контрольної і показує учневі, де він лежить (null — зберегти не вдалося)
@@ -169,19 +169,19 @@ public partial class StartForm : Form
         {
             string path = ResultFile.Save(result);
 
-            MessageBox.Show(this,
+            Dialogs.Info(this,
                 $"Результат збережено у файл:\n\n{path}\n\n" +
                 "Надішліть цей файл викладачеві (через Classroom, Telegram тощо).\n" +
                 "Файл захищено підписом: якщо змінити в ньому хоч щось, викладач це побачить.",
-                "Результат збережено", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                "Результат збережено");
 
             return path;
         }
         catch (IOException ex)
         {
-            MessageBox.Show(this, "Не вдалося зберегти файл результату.\n\n" + ex.Message +
-                                  "\n\nПокажіть цей результат викладачеві на екрані.",
-                "Помилка збереження", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Dialogs.Error(this, "Не вдалося зберегти файл результату.\n\n" + ex.Message +
+                                "\n\nПокажіть цей результат викладачеві на екрані.",
+                "Помилка збереження");
             return null;
         }
     }
@@ -207,7 +207,7 @@ public partial class StartForm : Form
 
         Hide();
 
-        using (TeacherForm teacher = new(bank))
+        using (TeacherForm teacher = new(bank, bankSource))
         {
             teacher.ShowDialog();
         }
@@ -225,6 +225,6 @@ public partial class StartForm : Form
 
     private void ShowWarning(string message)
     {
-        MessageBox.Show(this, message, "Перевірте дані", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        Dialogs.Warning(this, message, "Перевірте дані");
     }
 }

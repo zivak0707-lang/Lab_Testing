@@ -106,7 +106,7 @@ public class TableView : QuestionView
             }
         }
 
-        result.Score = Grading.Points(correct, cells.Count);
+        SetScore(result, correct, cells.Count);
         result.Summary = $"правильно {correct} з {cells.Count}";
         return result;
     }

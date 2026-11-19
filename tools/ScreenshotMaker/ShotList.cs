@@ -9,7 +9,7 @@ internal record Shot(int Number, string File, string Caption, int Stage, string?
 internal static class ShotList
 {
     // Останній реалізований етап
-    public const int CurrentStage = 6;
+    public const int CurrentStage = 7;
 
     public static readonly List<Shot> All = new()
     {
@@ -71,7 +71,7 @@ internal static class ShotList
         // ---------- Етап 6 ----------
         new(37, "37_teacher_password.png", "Вхід у режим викладача за паролем", 6),
         new(38, "38_teacher_password_wrong.png", "Неправильний пароль викладача", 6),
-        new(39, "39_teacher_empty.png", "Режим викладача: порожня таблиця з підказкою перетягнути файли", 6),
+        new(39, "39_teacher_empty.png", "Режим викладача: порожня таблиця з підказкою перетягнути файли і порадою змінити типовий пароль", 6),
         new(40, "40_teacher_open_dialog.png", "Діалог вибору кількох файлів результатів", 6),
         new(41, "41_teacher_change_password.png", "Зміна пароля викладача", 6),
         new(42, "42_teacher_export_dialog.png", "Діалог експорту таблиці результатів у CSV для Excel", 6),
@@ -86,6 +86,14 @@ internal static class ShotList
             "натисніть «Експорт у Excel (CSV)…», відкрийте файл в Excel і зніміть вікно Excel"),
         new(48, "48_designer_teacherform.png", "Форма TeacherForm у конструкторі Visual Studio", 6,
             "відкрийте Forms\\TeacherForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
+
+        // ---------- Етап 7 ----------
+        new(49, "49_bank_tools_prepared.png", "Вікно «Банк питань і ключ підпису»: банк для учнів підготовлено, створено ключ вчителя", 7),
+        new(50, "50_bank_check_errors.png", "Перевірка файлу банку: помилки з номерами питань", 7),
+        new(51, "51_designer_banktoolsform.png", "Форма BankToolsForm у конструкторі Visual Studio", 7,
+            "відкрийте Forms\\BankToolsForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
+        new(52, "52_designer_messageform.png", "Власне вікно повідомлень MessageForm у конструкторі Visual Studio", 7,
+            "відкрийте Forms\\MessageForm.cs у конструкторі (Shift+F7) і зніміть вікно VS"),
     };
 
     public static Shot Get(int number)

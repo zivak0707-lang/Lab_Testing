@@ -346,10 +346,8 @@ public partial class TestForm : Form
             ? "Завершити контрольну? Після завершення змінити відповіді не можна, а результат буде збережено у файл."
             : "Завершити тест і подивитися результат?";
 
-        DialogResult answer = MessageBox.Show(this, warning + question, IsControl ? "Завершення контрольної" : "Завершення тесту",
-            MessageBoxButtons.YesNo, unanswered > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Question);
-
-        return answer == DialogResult.Yes;
+        return Dialogs.Ask(this, warning + question, IsControl ? "Завершення контрольної" : "Завершення тесту",
+            warning: unanswered > 0);
     }
 
     // ===================== Таймер контрольної =====================
@@ -382,9 +380,9 @@ public partial class TestForm : Form
         controlTimer.Stop();
         PrepareResult(byTimeout: true);
 
-        MessageBox.Show(this, "Час вийшов! Контрольну завершено автоматично.\n\n" +
-                              "Враховано всі відповіді, які ви встигли дати. Результат буде збережено у файл.",
-            "Час вийшов", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        Dialogs.Info(this, "Час вийшов! Контрольну завершено автоматично.\n\n" +
+                           "Враховано всі відповіді, які ви встигли дати. Результат буде збережено у файл.",
+            "Час вийшов");
 
         DialogResult = DialogResult.OK;
         Close();
@@ -449,10 +447,7 @@ public partial class TestForm : Form
             return;
         }
 
-        DialogResult answer = MessageBox.Show(this, "Вийти з тесту? Відповіді не буде збережено.", "Вихід",
-            MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-        e.Cancel = answer != DialogResult.Yes;
+        e.Cancel = !Dialogs.Ask(this, "Вийти з тесту? Відповіді не буде збережено.", "Вихід", warning: true);
     }
 
     // Звільняємо подання питань, які зараз не показані у вікні

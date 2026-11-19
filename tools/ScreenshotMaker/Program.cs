@@ -10,6 +10,17 @@ internal static class Program
     {
         Console.OutputEncoding = Encoding.UTF8;
 
+        // Дані програми (пароль, ключ вчителя, резервні копії) — у тимчасовій теці, щоб утиліта
+        // нічого не створювала й не змінювала в %AppData% комп'ютера, де її запускають
+        string dataFolder = Path.Combine(Path.GetTempPath(), "Lab_Testing_дані_утиліти");
+
+        if (Directory.Exists(dataFolder))
+        {
+            Directory.Delete(dataFolder, true);
+        }
+
+        Environment.SetEnvironmentVariable("LAB_TESTING_DATA", dataFolder);
+
         // Ті самі налаштування WinForms, що й у Lab_Testing (ApplicationConfiguration)
         Application.SetHighDpiMode(HighDpiMode.SystemAware);
         Application.EnableVisualStyles();

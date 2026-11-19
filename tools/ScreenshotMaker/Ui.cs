@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Reflection;
+using Lab_Testing;
 
 namespace ScreenshotMaker;
 
@@ -99,6 +100,31 @@ internal class Ui
         await Task.Delay(400);
     }
 
+    // Знімок повідомлення програми (MessageForm з кнопками «Так/Ні/OK»): action відкриває його,
+    // утиліта знімає вікно і натискає потрібну кнопку. number == null — лише натиснути кнопку
+    public async Task MessageShotAsync(Form owner, Action action, int? number, Answer answer, int timeoutMs = 8000)
+    {
+        owner.BeginInvoke(action);
+        MessageForm message = await WaitForFormAsync<MessageForm>(number ?? 0, timeoutMs);
+        await Task.Delay(500);
+
+        if (number != null)
+        {
+            using Bitmap bmp = WindowCapture.Capture(message.Handle);
+            Save(bmp, number.Value);
+        }
+
+        string button = answer switch
+        {
+            Answer.Yes => "btnYes",
+            Answer.No => "btnNo",
+            _ => "btnOk"
+        };
+
+        Find<Button>(message, button).PerformClick();
+        await Task.Delay(400);
+    }
+
     // Знімок модальної форми програми (наприклад, «Про програму»), яку відкриває action
     public async Task FormShotAsync<T>(Form owner, Action action, int number) where T : Form
     {
@@ -115,7 +141,7 @@ internal class Ui
         await Task.Delay(400);
     }
 
-    public static async Task<T> WaitForFormAsync<T>(int number) where T : Form
+    public static async Task<T> WaitForFormAsync<T>(int number, int timeoutMs = 8000) where T : Form
     {
         Stopwatch sw = Stopwatch.StartNew();
 
@@ -128,7 +154,7 @@ internal class Ui
                 return form;
             }
 
-            if (sw.ElapsedMilliseconds > 8000)
+            if (sw.ElapsedMilliseconds > timeoutMs)
             {
                 throw new TimeoutException($"Рисунок {number}: форма {typeof(T).Name} не з'явилася");
             }
@@ -159,4 +185,12 @@ internal class Ui
         bmp.Save(Path.Combine(outDir, shot.File), ImageFormat.Png);
         Console.WriteLine($"  Рисунок {number}: {shot.File} ({bmp.Width}×{bmp.Height})");
     }
+}
+
+// Яку кнопку натиснути в повідомленні програми
+internal enum Answer
+{
+    Ok,
+    Yes,
+    No
 }

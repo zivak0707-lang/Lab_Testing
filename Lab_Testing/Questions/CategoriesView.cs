@@ -162,7 +162,7 @@ public class CategoriesView : QuestionView
             }
         }
 
-        result.Score = Grading.Points(correct, Question.Items.Count);
+        SetScore(result, correct, Question.Items.Count);
         result.Summary = $"правильно {correct} з {Question.Items.Count}";
         return result;
     }

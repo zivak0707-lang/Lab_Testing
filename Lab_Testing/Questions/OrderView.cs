@@ -102,7 +102,7 @@ public class OrderView : QuestionView
             }
         }
 
-        result.Score = Grading.Points(correct, slots.Count);
+        SetScore(result, correct, slots.Count);
         result.Summary = $"на своєму місці {correct} з {slots.Count}";
         return result;
     }

@@ -117,7 +117,7 @@ public class GapsView : QuestionView
             }
         }
 
-        result.Score = Grading.Points(correct, gaps.Count);
+        SetScore(result, correct, gaps.Count);
         result.Summary = $"правильно {correct} з {gaps.Count}";
         return result;
     }

@@ -33,6 +33,11 @@ namespace Lab_Testing
             lblSubtitle = new Label();
             lblTitle = new Label();
             pnlToolbar = new Panel();
+            btnBankTools = new Button();
+            pnlPasswordHint = new Panel();
+            btnCloseHint = new Button();
+            lnkChangePassword = new LinkLabel();
+            lblPasswordHint = new Label();
             btnChangePassword = new Button();
             btnClear = new Button();
             btnExport = new Button();
@@ -63,6 +68,7 @@ namespace Lab_Testing
             saveFileDialog = new SaveFileDialog();
             pnlTop.SuspendLayout();
             pnlToolbar.SuspendLayout();
+            pnlPasswordHint.SuspendLayout();
             pnlGrid.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvResults).BeginInit();
             statusStrip.SuspendLayout();
@@ -104,6 +110,7 @@ namespace Lab_Testing
             // pnlToolbar
             //
             pnlToolbar.BackColor = Color.FromArgb(232, 236, 241);
+            pnlToolbar.Controls.Add(btnBankTools);
             pnlToolbar.Controls.Add(btnChangePassword);
             pnlToolbar.Controls.Add(btnClear);
             pnlToolbar.Controls.Add(btnExport);
@@ -114,6 +121,63 @@ namespace Lab_Testing
             pnlToolbar.Name = "pnlToolbar";
             pnlToolbar.Size = new Size(1180, 56);
             pnlToolbar.TabIndex = 1;
+            //
+            // btnBankTools
+            //
+            btnBankTools.Location = new Point(728, 10);
+            btnBankTools.Name = "btnBankTools";
+            btnBankTools.Size = new Size(210, 36);
+            btnBankTools.TabIndex = 5;
+            btnBankTools.Text = "Банк питань і ключ…";
+            btnBankTools.UseVisualStyleBackColor = true;
+            btnBankTools.Click += BtnBankTools_Click;
+            //
+            // pnlPasswordHint
+            //
+            pnlPasswordHint.BackColor = Color.FromArgb(255, 243, 205);
+            pnlPasswordHint.Controls.Add(btnCloseHint);
+            pnlPasswordHint.Controls.Add(lnkChangePassword);
+            pnlPasswordHint.Controls.Add(lblPasswordHint);
+            pnlPasswordHint.Dock = DockStyle.Top;
+            pnlPasswordHint.Location = new Point(0, 126);
+            pnlPasswordHint.Name = "pnlPasswordHint";
+            pnlPasswordHint.Size = new Size(1180, 38);
+            pnlPasswordHint.TabIndex = 4;
+            pnlPasswordHint.Visible = false;
+            //
+            // btnCloseHint
+            //
+            btnCloseHint.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnCloseHint.FlatAppearance.BorderSize = 0;
+            btnCloseHint.FlatStyle = FlatStyle.Flat;
+            btnCloseHint.Location = new Point(1136, 4);
+            btnCloseHint.Name = "btnCloseHint";
+            btnCloseHint.Size = new Size(30, 30);
+            btnCloseHint.TabIndex = 2;
+            btnCloseHint.Text = "✕";
+            btnCloseHint.UseVisualStyleBackColor = true;
+            btnCloseHint.Click += BtnCloseHint_Click;
+            //
+            // lnkChangePassword
+            //
+            lnkChangePassword.AutoSize = true;
+            lnkChangePassword.Location = new Point(620, 10);
+            lnkChangePassword.Name = "lnkChangePassword";
+            lnkChangePassword.Size = new Size(104, 19);
+            lnkChangePassword.TabIndex = 1;
+            lnkChangePassword.TabStop = true;
+            lnkChangePassword.Text = "Змінити пароль";
+            lnkChangePassword.LinkClicked += LnkChangePassword_LinkClicked;
+            //
+            // lblPasswordHint
+            //
+            lblPasswordHint.AutoSize = true;
+            lblPasswordHint.ForeColor = Color.FromArgb(102, 77, 3);
+            lblPasswordHint.Location = new Point(20, 10);
+            lblPasswordHint.Name = "lblPasswordHint";
+            lblPasswordHint.Size = new Size(590, 19);
+            lblPasswordHint.TabIndex = 0;
+            lblPasswordHint.Text = "Ви увійшли з типовим паролем. Радимо змінити його, щоб режим викладача був лише у вас.";
             //
             // btnChangePassword
             //
@@ -384,6 +448,7 @@ namespace Lab_Testing
             ClientSize = new Size(1180, 640);
             Controls.Add(pnlGrid);
             Controls.Add(statusStrip);
+            Controls.Add(pnlPasswordHint);
             Controls.Add(pnlToolbar);
             Controls.Add(pnlTop);
             Font = new Font("Segoe UI", 10F);
@@ -394,6 +459,8 @@ namespace Lab_Testing
             pnlTop.ResumeLayout(false);
             pnlTop.PerformLayout();
             pnlToolbar.ResumeLayout(false);
+            pnlPasswordHint.ResumeLayout(false);
+            pnlPasswordHint.PerformLayout();
             pnlGrid.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvResults).EndInit();
             statusStrip.ResumeLayout(false);
@@ -413,6 +480,11 @@ namespace Lab_Testing
         private Button btnExport;
         private Button btnClear;
         private Button btnChangePassword;
+        private Button btnBankTools;
+        private Panel pnlPasswordHint;
+        private Label lblPasswordHint;
+        private LinkLabel lnkChangePassword;
+        private Button btnCloseHint;
         private Panel pnlGrid;
         private Label lblDropHint;
         private DataGridView dgvResults;

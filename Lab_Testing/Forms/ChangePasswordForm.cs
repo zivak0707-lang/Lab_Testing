@@ -41,8 +41,7 @@ public partial class ChangePasswordForm : Form
             return;
         }
 
-        MessageBox.Show(this, "Пароль змінено. Наступного разу входьте з новим паролем.", "Зміна пароля",
-            MessageBoxButtons.OK, MessageBoxIcon.Information);
+        Dialogs.Info(this, "Пароль змінено. Наступного разу входьте з новим паролем.", "Зміна пароля");
         DialogResult = DialogResult.OK;
     }
 

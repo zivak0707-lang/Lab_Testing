@@ -127,7 +127,7 @@ internal static class DragSelfTest
         {
             SetCursorPos(originalCursor.X, originalCursor.Y);
             form.TopMost = false;
-            await ui.DialogShotAsync(form, () => Ui.Click(form, "btnFinish"), null, WindowCapture.IDYES);
+            await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), null, Answer.Yes);
         }
     }
 

@@ -12,6 +12,8 @@ public class QuestionResult
     public string Topic { get; set; } = "";
     public double Score { get; set; }                       // набрані бали (з частковими)
     public double MaxScore { get; set; } = Grading.QuestionMaxScore;
+    public int Correct { get; set; }                        // зараховано правильних розміщень
+    public int Total { get; set; }                          // з скількох (Score = 20 × Correct / Total)
     public string Summary { get; set; } = "";               // коротко: «правильно 4 з 6»
     public List<string> Mistakes { get; set; } = new();     // опис кожної помилки разом із правильною відповіддю
 

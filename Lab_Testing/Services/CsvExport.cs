@@ -61,6 +61,8 @@ public static class CsvExport
         return status switch
         {
             ResultFileStatus.Valid => "так",
+            ResultFileStatus.DefaultKey => "не гарантовано — загальний ключ",
+            ResultFileStatus.UnknownKey => "не гарантовано — інший ключ",
             ResultFileStatus.Modified => "НІ — змінено",
             _ => "НІ — пошкоджено"
         };

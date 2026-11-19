@@ -23,6 +23,7 @@ public class TestResult
     public int AttemptNumber { get; set; } = 1;        // номер спроби контрольної на цьому комп'ютері
     public string Computer { get; set; } = "";         // ім'я комп'ютера, на якому проходили тест
     public string AppVersion { get; set; } = "";
+    public string KeyId { get; set; } = "";            // номер ключа, яким підписано файл (див. TeacherKey)
     public string Signature { get; set; } = "";        // підпис файлу (див. ResultFile)
 
     [JsonIgnore]

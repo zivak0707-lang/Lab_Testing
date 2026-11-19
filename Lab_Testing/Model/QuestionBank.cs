@@ -37,27 +37,63 @@ public static class QuestionBank
 
     // ===================== Завантаження =====================
 
-    // Завантажує банк: файл questions.json поруч з exe, інакше — вбудований у програму.
+    // Текст чинного банку (для кнопки «Зберегти банк для редагування»)
+    public static string CurrentJson { get; private set; } = "";
+
+    // Банк вчителя (questions.dat), якщо програму запущено з ним; null — банк вчителя не підключено
+    public static BankPackage? TeacherPackage { get; private set; }
+
+    // Завантажує банк. Порядок пошуку поруч з exe:
+    //   questions.dat  — банк, підготовлений вчителем для учнів (з ключем підпису вчителя);
+    //   questions.json — відкритий банк (наприклад, вчитель його редагує);
+    //   інакше — банк, вшитий у програму.
     // source — звідки взято банк (для підпису на стартовій сторінці)
     public static QuestionBankData Load(out string source)
     {
+        string datPath = Path.Combine(ExeFolder, BankFile.FileName);
         string jsonPath = Path.Combine(ExeFolder, JsonFileName);
+
+        if (File.Exists(datPath))
+        {
+            BankPackage package = BankFile.Read(datPath);
+            QuestionBankData bank = Parse(package.BankJson, BankFile.FileName);
+
+            // Файли результатів підписуватимуться ключем вчителя, а режим викладача — паролем вчителя
+            TeacherPackage = package;
+            ResultFile.SigningKey = Convert.FromBase64String(package.SigningKey);
+            CurrentJson = package.BankJson;
+            source = $"банк вчителя, підготовлено {package.PreparedAt:dd.MM.yyyy}";
+            return bank;
+        }
 
         if (File.Exists(jsonPath))
         {
+            CurrentJson = File.ReadAllText(jsonPath);
             source = "файл " + JsonFileName;
-            return Parse(File.ReadAllText(jsonPath), JsonFileName);
+            return Parse(CurrentJson, JsonFileName);
         }
 
+        CurrentJson = ReadEmbeddedJson();
         source = "вбудований у програму";
-        return Parse(ReadEmbeddedJson(), "вбудований банк");
+        return Parse(CurrentJson, "вбудований банк");
     }
 
     // Текст банку, вшитого в exe
     public static string ReadEmbeddedJson()
     {
-        using Stream stream = typeof(QuestionBank).Assembly.GetManifestResourceStream(ResourceName)
-            ?? throw new BankException("У програмі не знайдено вбудованого банку питань.");
+        return ReadResource(ResourceName);
+    }
+
+    // Шаблон банку для вчителя (по одному простому питанню кожного типу)
+    public static string ReadTemplateJson()
+    {
+        return ReadResource("Lab_Testing.bank_template.json");
+    }
+
+    private static string ReadResource(string name)
+    {
+        using Stream stream = typeof(QuestionBank).Assembly.GetManifestResourceStream(name)
+            ?? throw new BankException($"У програмі не знайдено ресурсу {name}.");
         using StreamReader reader = new(stream);
         return reader.ReadToEnd();
     }

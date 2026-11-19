@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace Lab_Testing;
@@ -9,9 +10,11 @@ namespace Lab_Testing;
 // Стан файлу результату після перевірки підпису
 public enum ResultFileStatus
 {
-    Valid,      // файл справжній
-    Modified,   // вміст змінено після збереження (підпис не збігається)
-    Damaged     // файл не вдалося прочитати або це не файл результату
+    Valid,       // справжній: підписано ключем цього вчителя
+    DefaultKey,  // підписано загальним ключем програми (учень проходив тест без банку вчителя)
+    UnknownKey,  // підписано ключем, якого на цьому комп'ютері немає (інший банк або підробка)
+    Modified,    // вміст змінено після збереження (підпис не збігається)
+    Damaged      // файл не вдалося прочитати або це не файл результату
 }
 
 // Відкритий викладачем файл: шлях, чи справжній, дані (null — файл пошкоджений)
@@ -19,15 +22,21 @@ public record ResultEntry(string FilePath, ResultFileStatus Status, TestResult? 
 
 // Файл результату контрольної: збереження з підписом і перевірка, чи файл не змінювали.
 // Підпис — HMAC-SHA256 від усього вмісту файлу. Якщо змінити в Блокноті хоч один символ даних
-// (наприклад, оцінку), підпис перестане збігатися
+// (наприклад, оцінку), підпис перестане збігатися.
+// Підписують ключем вчителя з банку questions.dat; без банку — загальним ключем програми
 public static class ResultFile
 {
     public const string FolderName = "Результати тесту C#";
-    public const string FormatName = "Lab_Testing.Result/1";
+    public const string FormatName = "Lab_Testing.Result/2";
+    private const string OldFormatName = "Lab_Testing.Result/1";   // файли попередніх версій (лише загальний ключ)
+    public const string DefaultKeyId = "загальний";
 
-    // Ключ підпису вшитий у програму. Він захищає від ручного редагування файлу,
-    // але не від програміста, який розбере exe (це обмеження описано в README)
-    private static readonly byte[] SignKey = Encoding.UTF8.GetBytes("Lab_Testing|підпис результату|Зівак-471|2026|q7Mz2vR9");
+    // Загальний ключ програми. Він є в публічному коді, тому файли з ним програма вчителя
+    // позначає «загальний ключ» — їхню справжність гарантувати не можна
+    private static readonly byte[] DefaultKey = Encoding.UTF8.GetBytes("Lab_Testing|підпис результату|Зівак-471|2026|q7Mz2vR9");
+
+    // Ключ, яким ця програма підписує файли: ключ вчителя з questions.dat (null — загальний ключ)
+    public static byte[]? SigningKey { get; set; }
 
     // Для підпису JSON записується в один рядок, щоб пробіли і переноси не впливали на результат
     private static readonly JsonSerializerOptions CanonicalOptions = new(QuestionBank.JsonOptions) { WriteIndented = false };
@@ -41,8 +50,7 @@ public static class ResultFile
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), FolderName);
 
     // Резервні копії всіх спроб на цьому комп'ютері (за ними рахуємо повторні спроби)
-    public static string BackupFolder =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lab_Testing", "results");
+    public static string BackupFolder => Path.Combine(AppPaths.DataFolder, "results");
 
     // ===================== Збереження =====================
 
@@ -73,9 +81,14 @@ public static class ResultFile
             question.Mistakes = question.Mistakes.Select(PlainText).ToList();
         }
 
+        byte[] key = SigningKey ?? DefaultKey;
         copy.Format = FormatName;
-        copy.Signature = ComputeSignature(copy);
-        return JsonSerializer.Serialize(copy, QuestionBank.JsonOptions);
+        copy.KeyId = SigningKey == null ? DefaultKeyId : TeacherKey.MakeId(SigningKey);
+        copy.Signature = "";
+
+        JsonObject document = JsonSerializer.SerializeToNode(copy, QuestionBank.JsonOptions)!.AsObject();
+        document["signature"] = Sign(document, key);
+        return document.ToJsonString(QuestionBank.JsonOptions);
     }
 
     // `код` -> «код», **жирне** -> жирне
@@ -152,36 +165,54 @@ public static class ResultFile
     // Читає файл результату і перевіряє підпис
     public static ResultFileStatus Check(string json, out TestResult? result)
     {
+        result = null;
+        JsonObject? document;
+
         try
         {
-            result = JsonSerializer.Deserialize<TestResult>(json, QuestionBank.JsonOptions);
+            document = JsonNode.Parse(json) as JsonObject;
+            result = document?.Deserialize<TestResult>(QuestionBank.JsonOptions);
         }
         catch (JsonException)
+        {
+            return ResultFileStatus.Damaged;
+        }
+
+        if (document == null || result == null || (result.Format != FormatName && result.Format != OldFormatName))
         {
             result = null;
             return ResultFileStatus.Damaged;
         }
 
-        if (result == null || result.Format != FormatName)
+        // Яким ключем підписано: файли першої версії — завжди загальним
+        string keyId = result.Format == OldFormatName ? DefaultKeyId : result.KeyId;
+        byte[]? key = keyId == DefaultKeyId ? DefaultKey : TeacherKey.Find(keyId);
+
+        if (key == null)
         {
-            return ResultFileStatus.Damaged;
+            return ResultFileStatus.UnknownKey;
         }
 
-        byte[] expected = Encoding.ASCII.GetBytes(ComputeSignature(result));
+        byte[] expected = Encoding.ASCII.GetBytes(Sign(document, key));
         byte[] actual = Encoding.ASCII.GetBytes(result.Signature);
 
-        return CryptographicOperations.FixedTimeEquals(expected, actual) ? ResultFileStatus.Valid : ResultFileStatus.Modified;
+        if (!CryptographicOperations.FixedTimeEquals(expected, actual))
+        {
+            return ResultFileStatus.Modified;
+        }
+
+        return keyId == DefaultKeyId ? ResultFileStatus.DefaultKey : ResultFileStatus.Valid;
     }
 
-    // HMAC-SHA256 від усього вмісту, крім самого поля підпису
-    private static string ComputeSignature(TestResult result)
+    // HMAC-SHA256 від усього тексту файлу в один рядок, де поле signature порожнє.
+    // Рахуємо від самого JSON (а не від класу C#), тож будь-яка зміна тексту — і навіть додане поле — помітна
+    private static string Sign(JsonObject document, byte[] key)
     {
-        string saved = result.Signature;
-        result.Signature = "";
-        byte[] content = JsonSerializer.SerializeToUtf8Bytes(result, CanonicalOptions);
-        result.Signature = saved;
+        JsonObject copy = document.DeepClone().AsObject();
+        copy["signature"] = "";
+        byte[] content = Encoding.UTF8.GetBytes(copy.ToJsonString(CanonicalOptions));
 
-        return Convert.ToBase64String(HMACSHA256.HashData(SignKey, content));
+        return Convert.ToBase64String(HMACSHA256.HashData(key, content));
     }
 
     // ===================== Повторні спроби і Провідник =====================

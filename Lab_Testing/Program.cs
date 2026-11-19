@@ -19,8 +19,7 @@ internal static class Program
         catch (BankException ex)
         {
             // Банк з помилками: показуємо, що саме не так, і не запускаємо тест
-            MessageBox.Show("Не вдалося завантажити банк питань.\n\n" + ex.Message,
-                AppInfo.Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Dialogs.Error(null, "Не вдалося завантажити банк питань.\n\n" + ex.Message, AppInfo.Title);
             return;
         }
 

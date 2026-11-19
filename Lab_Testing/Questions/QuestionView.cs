@@ -258,6 +258,14 @@ public abstract class QuestionView : UserControl
         };
     }
 
+    // Записує в результат «правильно X з Y» і бали за ними (20 × X / Y)
+    protected static void SetScore(QuestionResult result, int correct, int total)
+    {
+        result.Correct = Math.Clamp(correct, 0, total);
+        result.Total = total;
+        result.Score = Grading.Points(result.Correct, total);
+    }
+
     // Значення картки для тексту помилки: код — у зворотних лапках (покажеться моноширинним шрифтом),
     // український текст — у «лапках-ялинках»
     protected static string Quote(string value)

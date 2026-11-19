@@ -65,10 +65,16 @@ public partial class ResultForm : Form
     // Вигляд для викладача: заголовок і внизу — чи справжній файл
     public void ShowForTeacher(ResultFileStatus status)
     {
-        lblTitle.Text = status == ResultFileStatus.Valid ? "Результат учня" : "Результат учня (файл змінено!)";
-        lblFileInfo.Text = (status == ResultFileStatus.Valid ? "✔ Файл справжній: " : "✗ Файл змінено після збереження: ") +
-                           Path.GetFileName(filePath);
-        lblFileInfo.ForeColor = status == ResultFileStatus.Valid ? Theme.Success : Theme.Error;
+        bool valid = status == ResultFileStatus.Valid;
+
+        lblTitle.Text = status switch
+        {
+            ResultFileStatus.Valid => "Результат учня",
+            ResultFileStatus.Modified => "Результат учня (файл змінено!)",
+            _ => "Результат учня (справжність не підтверджено)"
+        };
+        lblFileInfo.Text = TeacherForm.StatusText(status) + ": " + Path.GetFileName(filePath);
+        lblFileInfo.ForeColor = valid ? Theme.Success : Theme.Error;
     }
 
     // «Відкрити теку з файлом»: Провідник з виділеним файлом результату
