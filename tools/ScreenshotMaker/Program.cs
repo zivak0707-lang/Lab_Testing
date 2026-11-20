@@ -40,6 +40,7 @@ internal static class Program
         bool dragTest = args.Contains("--drag-test");
         bool diagTopmost = args.Contains("--diag-topmost");
         bool diagKeys = args.Contains("--diag-keys");
+        bool readmeMedia = args.Contains("--readme-media");
 
         // --all-questions <тека>: знімки всіх питань банку для перевірки розмітки
         int allIndex = Array.IndexOf(args, "--all-questions");
@@ -63,7 +64,11 @@ internal static class Program
 
             try
             {
-                if (diagKeys)
+                if (readmeMedia)
+                {
+                    await ReadmeMedia.RunAsync(FindRepoRoot());
+                }
+                else if (diagKeys)
                 {
                     await TopmostDiagnostics.RunKeysAsync();
                 }

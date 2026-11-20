@@ -99,7 +99,17 @@ internal static class WindowCapture
     // Знімок вікна разом із поточним курсором миші (під час перетягування це курсор Move або Copy «+»)
     public static Bitmap CaptureWithCursor(IntPtr hwnd)
     {
-        Bitmap bmp = Capture(hwnd);
+        // Курсор малюємо на копії без альфа-каналу: звичайна стрілка — чорно-біла і малюється через XOR-маску,
+        // яка на знімку з альфа-каналом дає неправильні кольори (на екрані такого каналу немає)
+        Bitmap bmp;
+
+        using (Bitmap captured = Capture(hwnd))
+        {
+            bmp = new Bitmap(captured.Width, captured.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+
+            using Graphics copy = Graphics.FromImage(bmp);
+            copy.DrawImage(captured, 0, 0, captured.Width, captured.Height);
+        }
 
         if (DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out RECT frame, Marshal.SizeOf<RECT>()) != 0)
         {
