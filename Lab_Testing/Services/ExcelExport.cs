@@ -13,6 +13,9 @@ public static class ExcelExport
     private static readonly XLColor OtherKeyBack = XLColor.FromArgb(255, 238, 214);
     private static readonly XLColor DamagedBack = XLColor.FromArgb(238, 240, 243);
 
+    private const double NoteWidth = 70;     // ширина стовпця «Примітка»
+    private const double LineHeight = 15;    // висота рядка тексту (шрифт Calibri 11), пункти
+
     public static void Save(string path, IReadOnlyList<ResultEntry> entries, BankSettings settings)
     {
         using XLWorkbook book = new();
@@ -101,13 +104,47 @@ public static class ExcelExport
         sheet.Column(1).Width = 5;
         sheet.Column(3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;   // група — як текст
         sheet.Column(statusColumn).Width += 3;      // стан написано жирним — потрібно трохи більше місця
-        sheet.Column(noteColumn).Width = 60;
+        sheet.Column(noteColumn).Width = NoteWidth;
         sheet.Column(noteColumn).Style.Alignment.WrapText = true;
         sheet.Range(2, 1, Math.Max(row - 1, 2), header.Count).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+
+        // Висоту рядків задаємо самі: Excel підбирає її під час відкриття не завжди точно,
+        // і текст на межі ширини обрізається
+        for (int r = 2; r < row; r++)
+        {
+            FitRowHeight(sheet.Row(r), sheet.Cell(r, noteColumn).GetString(), NoteWidth);
+        }
 
         // Друк: альбомна сторінка, уся таблиця по ширині на одному аркуші
         sheet.PageSetup.PageOrientation = XLPageOrientation.Landscape;
         sheet.PageSetup.FitToPages(1, 0);
+    }
+
+    // Висота рядка під текст з переносом: рахуємо рядки за словами, з запасом по ширині
+    // (ширина стовпця в Excel — це кількість цифр «0», а літери в середньому ширші)
+    private static void FitRowHeight(IXLRow row, string text, double columnWidth)
+    {
+        int lineLength = (int)(columnWidth * 0.8);
+        int lines = 0;
+
+        foreach (string paragraph in text.Split('\n'))
+        {
+            int current = 0;
+            lines++;
+
+            foreach (string word in paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (current > 0 && current + 1 + word.Length > lineLength)
+                {
+                    lines++;
+                    current = 0;
+                }
+
+                current += (current > 0 ? 1 : 0) + word.Length;
+            }
+        }
+
+        row.Height = Math.Max(1, lines) * LineHeight + 3;
     }
 
     // Справжній — зелений стан; не вашим ключем — жовтий рядок; змінений — червоний; пошкоджений — сірий
@@ -168,6 +205,7 @@ public static class ExcelExport
             sheet.Cell(i + 3, 1).Value = lines[i].Name;
             sheet.Cell(i + 3, 1).Style.Font.Bold = true;
             sheet.Cell(i + 3, 2).Value = lines[i].Text;
+            FitRowHeight(sheet.Row(i + 3), lines[i].Text, 100);
         }
 
         sheet.Column(1).Width = 20;

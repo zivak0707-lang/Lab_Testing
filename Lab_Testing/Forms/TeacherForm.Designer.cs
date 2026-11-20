@@ -282,7 +282,7 @@ namespace Lab_Testing
             headerStyle.WrapMode = DataGridViewTriState.True;
             dgvResults.ColumnHeadersDefaultCellStyle = headerStyle;
             dgvResults.ColumnHeadersHeight = 44;
-            dgvResults.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            dgvResults.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dgvResults.Columns.AddRange(new DataGridViewColumn[] { colNumber, colName, colGroup, colDate, colDuration, colAttempt, colQ1, colQ2, colQ3, colQ4, colQ5, colTotal, colGrade, colStatus, colNote });
             dgvResults.Dock = DockStyle.Fill;
             dgvResults.EnableHeadersVisualStyles = false;
@@ -300,6 +300,7 @@ namespace Lab_Testing
             dgvResults.DragDrop += DgvResults_DragDrop;
             dgvResults.DragEnter += DgvResults_DragEnter;
             dgvResults.Resize += DgvResults_Resize;
+            dgvResults.SortCompare += DgvResults_SortCompare;
             //
             // colNumber
             //

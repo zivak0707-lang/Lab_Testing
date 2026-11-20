@@ -226,6 +226,36 @@ public partial class TeacherForm : Form
         CenterDropHint();
     }
 
+    // Сортування за стовпцем: у пошкоджених файлів клітинки порожні (рядок ""), а в інших — числа, дати чи час.
+    // Стандартне порівняння не вміє порівнювати рядок з числом, тому порожні клітинки ставимо першими,
+    // а однотипні значення порівнюємо як числа, дати чи час
+    private void DgvResults_SortCompare(object? sender, DataGridViewSortCompareEventArgs e)
+    {
+        bool empty1 = e.CellValue1 is null or "";
+        bool empty2 = e.CellValue2 is null or "";
+
+        if (empty1 || empty2)
+        {
+            e.SortResult = empty1 == empty2 ? 0 : empty1 ? -1 : 1;
+        }
+        else if (e.CellValue1!.GetType() == e.CellValue2!.GetType() && e.CellValue1 is IComparable comparable)
+        {
+            e.SortResult = comparable.CompareTo(e.CellValue2);
+        }
+        else
+        {
+            e.SortResult = string.Compare(e.CellValue1.ToString(), e.CellValue2.ToString(), StringComparison.CurrentCulture);
+        }
+
+        // Однакові значення — за порядковим номером, щоб рядки не «стрибали»
+        if (e.SortResult == 0)
+        {
+            e.SortResult = e.RowIndex1.CompareTo(e.RowIndex2);
+        }
+
+        e.Handled = true;
+    }
+
     private void CenterDropHint()
     {
         lblDropHint.Location = new Point((dgvResults.ClientSize.Width - lblDropHint.Width) / 2,

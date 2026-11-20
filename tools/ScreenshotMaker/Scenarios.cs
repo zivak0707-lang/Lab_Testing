@@ -210,10 +210,26 @@ internal class Scenarios
         // Контрольний знімок таблиці зі зразками (не для звіту: рисунок 44 — з вашими файлами)
         await Ui.ShotToFileAsync(teacher, Path.Combine(Path.GetTempPath(), "Lab_Testing_зразки", "_таблиця_вчителя.png"));
 
+        // Після сортування в заголовку з'являється стрілка ▲ — заголовки мають і тоді вміщатися
+        DataGridView grid = Ui.Find<DataGridView>(teacher, "dgvResults");
+        grid.Sort(grid.Columns["colDuration"]!, System.ComponentModel.ListSortDirection.Ascending);
+        await Ui.ShotToFileAsync(teacher, Path.Combine(Path.GetTempPath(), "Lab_Testing_зразки", "_таблиця_сортування_час.png"));
+        grid.Sort(grid.Columns["colTotal"]!, System.ComponentModel.ListSortDirection.Descending);
+        await Ui.ShotToFileAsync(teacher, Path.Combine(Path.GetTempPath(), "Lab_Testing_зразки", "_таблиця_сортування_бали.png"));
+
+        // Сортування за кожним стовпцем в обидва боки — з пошкодженим файлом у таблиці
+        foreach (DataGridViewColumn column in grid.Columns)
+        {
+            grid.Sort(column, System.ComponentModel.ListSortDirection.Ascending);
+            grid.Sort(column, System.ComponentModel.ListSortDirection.Descending);
+        }
+
+        grid.Sort(grid.Columns["colNumber"]!, System.ComponentModel.ListSortDirection.Ascending);
+        Console.WriteLine("  Таблиця вчителя: сортування за кожним стовпцем (і з пошкодженим файлом) — без помилок");
+
         await ui.DialogShotAsync(teacher, () => Ui.Click(teacher, "btnExport"), 42, WindowCapture.IDCANCEL);
 
         // Подвійний клік по рядку зміненого файлу -> попередження («Ні» — не відкривати)
-        DataGridView grid = Ui.Find<DataGridView>(teacher, "dgvResults");
         int modifiedRow = grid.Rows.Cast<DataGridViewRow>()
             .First(r => r.Tag is ResultEntry { Status: ResultFileStatus.Modified }).Index;
         await ui.MessageShotAsync(teacher, () => Ui.DoubleClickCell(grid, modifiedRow), 43, Answer.No);
