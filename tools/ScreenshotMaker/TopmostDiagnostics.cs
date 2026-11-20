@@ -41,6 +41,62 @@ internal static class TopmostDiagnostics
         await Task.Delay(500);
     }
 
+
+    // Діагностика клавіш: чи спрацьовує Ctrl+Shift+F12 (лише Debug) на справжнє натискання —
+    // з різним фокусом і різним порядком відпускання клавіш
+    public static async Task RunKeysAsync()
+    {
+        foreach ((bool focusOnForm, bool modifiersFirst) in new[] { (false, true), (false, false), (true, true) })
+        {
+            TestSession session = Scenarios.CreateSession(TestMode.Control, Scenarios.MainQuestionIds);
+            TestForm form = new(session);
+            form.Show();
+            await Task.Delay(1500);
+
+            if (focusOnForm)
+            {
+                form.ActiveControl = null;
+            }
+
+            string focus = form.ActiveControl?.GetType().Name ?? "вікно тесту (без елемента)";
+            bool pressed = await HotKeys.PressCtrlShiftF12Async(form, modifiersFirst);
+            MessageForm? message = pressed ? await TryWaitMessageAsync() : null;
+
+            Console.WriteLine($"  фокус: {focus}; відпускання: {(modifiersFirst ? "спершу Ctrl і Shift" : "спершу F12")} — " +
+                              $"збій спрацював: {message != null}");
+
+            if (message != null)
+            {
+                Ui.Find<Button>(message, "btnOk").PerformClick();
+            }
+            else
+            {
+                form.BeginInvoke(() => Ui.Click(form, "btnFinish"));
+                MessageForm ask = await Ui.WaitForFormAsync<MessageForm>(0);
+                Ui.Find<Button>(ask, "btnYes").PerformClick();
+            }
+
+            await Task.Delay(500);
+        }
+    }
+
+    private static async Task<MessageForm?> TryWaitMessageAsync()
+    {
+        for (int i = 0; i < 30; i++)
+        {
+            MessageForm? message = Application.OpenForms.OfType<MessageForm>().FirstOrDefault(f => f.Visible);
+
+            if (message != null)
+            {
+                return message;
+            }
+
+            await Task.Delay(100);
+        }
+
+        return null;
+    }
+
     private static void Report(string name, IntPtr hwnd, IntPtr testWindow)
     {
         bool topmost = (GetWindowLong(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0;

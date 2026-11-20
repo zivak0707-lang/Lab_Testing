@@ -802,16 +802,26 @@ public partial class TestForm : Form
             integrity!.AddScreenshot(DateTime.Now, currentIndex + 1, "клавіша Print Screen");
             ShowNotice("Спробу зробити знімок екрана записано.");
         }
+    }
 
 #if DEBUG
-        // Лише у версії для розробки (Debug): перевірка аварійного завершення — Ctrl+Shift+F12.
-        // В опублікованому exe (Release) цього рядка немає
-        if (IsControl && !finished && e.Control && e.Shift && e.KeyCode == Keys.F12)
+    // Лише у версії для розробки (Debug): перевірка аварійного завершення — Ctrl+Shift+F12.
+    // ProcessCmdKey викликається на НАТИСКАННЯ клавіші для будь-якого елемента з фокусом (ще до нього самого),
+    // тож не важать ні фокус, ні порядок, у якому відпускають клавіші (на відпусканні F12 приходить уже без Ctrl і Shift).
+    // В опублікованому exe (Release) цього методу немає зовсім
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (IsControl && !finished && keyData == (Keys.Control | Keys.Shift | Keys.F12))
         {
-            throw new InvalidOperationException("Перевірка аварійного завершення (Ctrl+Shift+F12, лише у версії Debug)");
+            // Виняток кидаємо через чергу повідомлень вікна — так само, як кинула б справжня помилка в коді обробника
+            BeginInvoke(new Action(() =>
+                throw new InvalidOperationException("Перевірка аварійного завершення (Ctrl+Shift+F12, лише у версії Debug)")));
+            return true;
         }
-#endif
+
+        return base.ProcessCmdKey(ref msg, keyData);
     }
+#endif
 
     // ===================== Збій програми під час контрольної =====================
 

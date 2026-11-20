@@ -274,7 +274,7 @@ internal class IntegrityScenario
     // ===================== Допоміжне =====================
 
     // Учень «виходить» в іншу програму (Блокнот) на milliseconds і повертається в тест
-    private static async Task LeaveAndReturnAsync(Form form, int milliseconds)
+    internal static async Task LeaveAndReturnAsync(Form form, int milliseconds)
     {
         using Process notepad = Process.Start("notepad.exe");
         await Task.Run(() => notepad.WaitForInputIdle(5000));
@@ -364,7 +364,7 @@ internal class IntegrityScenario
     }
 
     // Якщо після виходу з'явилося попередження — натискаємо «OK»
-    private static async Task CloseWarningIfShownAsync()
+    internal static async Task CloseWarningIfShownAsync()
     {
         for (int i = 0; i < 30; i++)
         {

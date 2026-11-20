@@ -45,6 +45,11 @@ internal class NamesAndCrashScenario
         Expect(NameRules.Key("  зівак   СЕРГІЙ ") == key, "регістр і зайві пробіли не важливі");
         Expect(NameRules.Key("Сергій Зівак") == key, "порядок слів не важливий");
         Expect(NameRules.Key("Зівок Сергій") != key, "інше прізвище — інший ключ");
+
+        // Латиниця записана кодами, щоб у тексті програми її не сплутати з кирилицею: C (U+0043), y (U+0079), k (U+006B)
+        Expect(NameRules.Key("Cергій Зівак") == key, "латинська «C» = кирилична «С»");
+        Expect(NameRules.Key("Крyк Ігор") == NameRules.Key("Крук Ігор"), "латинська «y» = кирилична «у»");
+        Expect(NameRules.Key("Лаkуста Олег") == NameRules.Key("Лакуста Олег"), "латинська «k» = кирилична «к»");
         Expect(NameRules.Key("Мар'яна Коваль") == NameRules.Key("Марʼяна Коваль") &&
                NameRules.Key("Мар’яна Коваль") == NameRules.Key("Мар'яна Коваль"), "різні апострофи — однаково");
         Expect(NameRules.GroupKey("ІПЗ-21") == NameRules.GroupKey("IПЗ - 21") &&
@@ -215,6 +220,12 @@ internal class NamesAndCrashScenario
 
     private async Task CrashAsync()
     {
+        // Ctrl+Shift+F12 спрацьовує і тоді, коли фокус на самому вікні (не на кнопці)
+        await HotKeyWithoutFocusAsync();
+
+        // Журнал утиліти (у її тимчасовій теці) — лише для цієї контрольної, щоб на рисунку 67 була вона одна
+        File.Delete(AppLog.FilePath);
+
         TestSession session = Scenarios.CreateSession(TestMode.Control, Scenarios.MainQuestionIds);
         session.RulesAcceptedAt = DateTime.Now;
         TestForm form = new(session);
@@ -225,8 +236,12 @@ internal class NamesAndCrashScenario
         Answers.FillCorrect(form.CurrentView);
         Expect(TestForm.RunningControl == form && ZOrder.IsTopMost(form.Handle), "контрольна йде на весь екран поверх усіх");
 
-        // Справжній непередбачений виняток у потоці вікон (як помилка в коді програми)
-        form.BeginInvoke(new Action(() => throw new InvalidOperationException("Перевірка аварійного завершення (утиліта знімків)")));
+        // Один справжній вихід з вікна (Блокнот на 3 с) — щоб у журналі була подія доброчесності
+        await IntegrityScenario.LeaveAndReturnAsync(form, 3000);
+        await IntegrityScenario.CloseWarningIfShownAsync();
+
+        // Справжнє натискання Ctrl+Shift+F12 (збірка Debug): спершу відпускаємо Ctrl і Shift — найважчий випадок
+        Expect(await HotKeys.PressCtrlShiftF12Async(form, modifiersFirst: true), "клавіші надіслано у вікно контрольної");
         MessageForm message = await Ui.WaitForFormAsync<MessageForm>(66, 15000);
         await Task.Delay(600);
 
@@ -250,6 +265,8 @@ internal class NamesAndCrashScenario
         Expect(TestForm.RunningControl == null, "після збою контрольна вже не «йде»");
 
         CheckLog();
+        await LogShotAsync();
+        await CaptureProtectionShotAsync();
         Console.WriteLine("  Збій під час контрольної: відповіді збережено (файл справжній), режим на весь екран знято, повідомлення видно");
     }
 
@@ -259,12 +276,181 @@ internal class NamesAndCrashScenario
         string log = File.ReadAllText(AppLog.FilePath);
         string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-        Expect(log.Contains("| доброчесність |") && log.Contains("підтвердив правила"), "журнал: події доброчесності");
+        Expect(log.Contains("| доброчесність |") && log.Contains("підтвердив правила") && log.Contains("вийшов з вікна тесту"),
+            "журнал: події доброчесності");
         Expect(log.Contains("| контрольна | почалась") && log.Contains("через помилку програми"), "журнал: початок і кінець контрольної");
-        Expect(log.Contains("| помилка |") && log.Contains("InvalidOperationException"), "журнал: помилка програми");
+        Expect(log.Contains("| помилка |") && log.Contains("InvalidOperationException") && log.Contains("Ctrl+Shift+F12"),
+            "журнал: помилка програми (від Ctrl+Shift+F12)");
         Expect(!log.Contains(profile, StringComparison.OrdinalIgnoreCase), "журнал: без шляху до профілю користувача");
 
         Console.WriteLine("  Журнал log.txt: події доброчесності, початок і кінець контрольної, помилка; шлях профілю приховано");
+    }
+
+    // Ctrl+Shift+F12, коли фокус на самому вікні тесту (а не на кнопці), і F12 відпущено першою
+    private static async Task HotKeyWithoutFocusAsync()
+    {
+        TestForm form = new(Scenarios.CreateSession(TestMode.Control, Scenarios.MainQuestionIds));
+        form.Show();
+        await Task.Delay(1000);
+        form.ActiveControl = null;
+
+        Expect(await HotKeys.PressCtrlShiftF12Async(form, modifiersFirst: false), "клавіші надіслано у вікно контрольної");
+        MessageForm message = await Ui.WaitForFormAsync<MessageForm>(0, 10000);
+        Ui.Find<Button>(message, "btnOk").PerformClick();
+        await Task.Delay(500);
+
+        Expect(form.Result?.Reason == FinishReason.ProgramError, "Ctrl+Shift+F12 без фокуса на елементі — аварійне завершення");
+        Console.WriteLine("  Ctrl+Shift+F12 (Debug): спрацьовує за будь-якого фокуса і порядку відпускання клавіш");
+    }
+
+    // ===================== Рисунок 67: журнал у Блокноті =====================
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool MoveWindow(IntPtr hwnd, int x, int y, int width, int height, bool repaint);
+
+    // log.txt у Блокноті з перенесенням рядків. Блокнот запам'ятовує перенесення і розмір вікна в реєстрі —
+    // після знімка повертаємо ваші налаштування як були
+    private async Task LogShotAsync()
+    {
+        using Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Notepad");
+        string[] names = { "fWrap", "iWindowPosX", "iWindowPosY", "iWindowPosDX", "iWindowPosDY" };
+        Dictionary<string, object?> saved = names.ToDictionary(n => n, n => key.GetValue(n));
+        key.SetValue("fWrap", 1, Microsoft.Win32.RegistryValueKind.DWord);
+
+        try
+        {
+            using System.Diagnostics.Process notepad = System.Diagnostics.Process.Start("notepad.exe", $"\"{AppLog.FilePath}\"");
+            await Task.Run(() => notepad.WaitForInputIdle(5000));
+            IntPtr window = IntPtr.Zero;
+
+            for (int i = 0; i < 50 && window == IntPtr.Zero; i++)
+            {
+                await Task.Delay(100);
+                window = WindowCapture.FindProcessWindow(notepad.Id, "Notepad");
+            }
+
+            Expect(window != IntPtr.Zero, "Блокнот відкрився");
+            Rectangle area = Screen.PrimaryScreen!.WorkingArea;
+            MoveWindow(window, area.X + 40, area.Y + 40, Math.Min(1200, area.Width - 80), Math.Min(760, area.Height - 80), true);
+            await Task.Delay(800);
+
+            using (Bitmap bmp = WindowCapture.Capture(window))
+            {
+                ui.SaveShot(bmp, 67);
+            }
+
+            notepad.CloseMainWindow();
+
+            if (!await Task.Run(() => notepad.WaitForExit(3000)))
+            {
+                notepad.Kill();
+            }
+        }
+        finally
+        {
+            foreach ((string name, object? value) in saved)
+            {
+                if (value == null)
+                {
+                    key.DeleteValue(name, throwOnMissingValue: false);
+                }
+                else
+                {
+                    key.SetValue(name, value, Microsoft.Win32.RegistryValueKind.DWord);
+                }
+            }
+        }
+    }
+
+    // ===================== Рисунок 61: захист від знімків екрана =====================
+
+    // Знімок УСЬОГО екрана звичайним способом (як Print Screen) під час контрольної: без захисту і з захистом.
+    // Під вікном тесту утиліта кладе порожнє вікно-фон — щоб на знімку був не ваш робочий стіл
+    private async Task CaptureProtectionShotAsync()
+    {
+        Rectangle screen = Screen.FromPoint(Cursor.Position).Bounds;
+        Color backColor = Color.FromArgb(58, 96, 135);
+
+        using Form backdrop = new()
+        {
+            FormBorderStyle = FormBorderStyle.None, StartPosition = FormStartPosition.Manual, Bounds = screen,
+            BackColor = backColor, ShowInTaskbar = false
+        };
+        backdrop.Controls.Add(new Label
+        {
+            Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.White,
+            Font = new Font("Segoe UI", 20F), Text = "Тут — інші вікна Windows під вікном тесту\n(для знімка — порожнє вікно утиліти)"
+        });
+        backdrop.Show();
+        await Task.Delay(500);
+
+        using Bitmap visible = await ScreenDuringControlAsync(hide: false, screen);
+        using Bitmap hidden = await ScreenDuringControlAsync(hide: true, screen);
+        backdrop.Close();
+
+        // Перевірка: посередині смуги режиму доброчесності без захисту — смуга, із захистом — фон під тестом
+        Point probe = new(screen.Width / 2, 30);
+        Expect(Near(visible.GetPixel(probe.X, probe.Y), Theme(33, 43, 54)), "без захисту вікно тесту є на знімку");
+        Expect(Near(hidden.GetPixel(probe.X, probe.Y), backColor), "із захистом вікна тесту на знімку немає");
+
+        using Bitmap combined = SideBySide(visible, "hideFromCapture: false — вікно тесту на знімку видно",
+            hidden, "hideFromCapture: true — вікна тесту на знімку немає");
+        ui.SaveShot(combined, 61);
+        Console.WriteLine("  Захист від знімків: на звичайному знімку екрана без захисту тест є, із захистом — його немає");
+    }
+
+    private async Task<Bitmap> ScreenDuringControlAsync(bool hide, Rectangle screen)
+    {
+        TestSession session = Scenarios.CreateSession(TestMode.Control, Scenarios.MainQuestionIds);
+        session.Settings.Integrity.HideFromCapture = hide;
+        session.RulesAcceptedAt = DateTime.Now;
+        TestForm form = new(session);
+        form.Show();
+        await Task.Delay(1500);
+
+        form.ShowQuestion(0);
+        Answers.FillCorrect(form.CurrentView);
+        await Task.Delay(800);
+        Expect(form.IntegrityReport!.CaptureProtection == (hide ? "вікно сховано від знімків" : "вимкнено"),
+            "стан захисту від знімків: " + form.IntegrityReport.CaptureProtection);
+
+        Bitmap bmp = new(screen.Width, screen.Height);
+
+        using (Graphics g = Graphics.FromImage(bmp))
+        {
+            g.CopyFromScreen(screen.Location, Point.Empty, screen.Size);   // звичайний знімок екрана (GDI)
+        }
+
+        await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), null, Answer.Yes);
+        return bmp;
+    }
+
+    // Два знімки поруч (кожен — удвічі менший) з підписами над ними
+    private static Bitmap SideBySide(Bitmap left, string leftCaption, Bitmap right, string rightCaption)
+    {
+        const int gap = 12, caption = 40;
+        int w = left.Width / 2, h = left.Height / 2;
+        Bitmap result = new(w * 2 + gap, h + caption);
+
+        using Graphics g = Graphics.FromImage(result);
+        using Font font = new("Segoe UI", 13F, FontStyle.Bold);
+        g.Clear(Color.White);
+        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        TextRenderer.DrawText(g, leftCaption, font, new Rectangle(0, 0, w, caption), Color.FromArgb(31, 78, 121), Color.White);
+        TextRenderer.DrawText(g, rightCaption, font, new Rectangle(w + gap, 0, w, caption), Color.FromArgb(31, 78, 121), Color.White);
+        g.DrawImage(left, new Rectangle(0, caption, w, h));
+        g.DrawImage(right, new Rectangle(w + gap, caption, w, h));
+        return result;
+    }
+
+    private static Color Theme(int r, int g, int b)
+    {
+        return Color.FromArgb(r, g, b);
+    }
+
+    private static bool Near(Color a, Color b)
+    {
+        return Math.Abs(a.R - b.R) + Math.Abs(a.G - b.G) + Math.Abs(a.B - b.B) < 30;
     }
 
     private static void Expect(bool condition, string what)

@@ -39,6 +39,7 @@ internal static class Program
 
         bool dragTest = args.Contains("--drag-test");
         bool diagTopmost = args.Contains("--diag-topmost");
+        bool diagKeys = args.Contains("--diag-keys");
 
         // --all-questions <тека>: знімки всіх питань банку для перевірки розмітки
         int allIndex = Array.IndexOf(args, "--all-questions");
@@ -62,7 +63,11 @@ internal static class Program
 
             try
             {
-                if (diagTopmost)
+                if (diagKeys)
+                {
+                    await TopmostDiagnostics.RunKeysAsync();
+                }
+                else if (diagTopmost)
                 {
                     await TopmostDiagnostics.RunAsync();
                 }
