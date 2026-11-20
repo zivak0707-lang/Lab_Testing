@@ -108,6 +108,14 @@ internal class Ui
         MessageForm message = await WaitForFormAsync<MessageForm>(number ?? 0, timeoutMs);
         await Task.Delay(500);
 
+        // Повідомлення має бути видно людині, а не лише утиліті (знімок вікна цього не показує)
+        IntPtr ownerWindow = ZOrder.GetOwner(message.Handle);
+
+        if (ownerWindow != IntPtr.Zero && ZOrder.IsVisible(ownerWindow))
+        {
+            ZOrder.ExpectDialogVisible(message.Handle, ownerWindow, $"Повідомлення «{message.Text}»");
+        }
+
         if (number != null)
         {
             using Bitmap bmp = WindowCapture.Capture(message.Handle);

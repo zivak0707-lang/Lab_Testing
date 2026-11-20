@@ -140,6 +140,12 @@ public partial class StartForm : Form
             result = test.Result;   // null — учень вийшов з «Навчання», не завершивши тест
         }
 
+        // Стартову сторінку повертаємо одразу: повідомлення про збереження файлу і сторінка результату
+        // мають видимого власника. Інакше програма лишається без вікон, Windows віддає фокус іншій програмі,
+        // і повідомлення відкривається десь позаду (кнопки на панелі задач у нього немає)
+        Show();
+        Activate();
+
         if (result != null)
         {
             // Розбір помилок: у «Навчанні» завжди, у «Контрольній» — якщо дозволив викладач.
@@ -154,10 +160,8 @@ public partial class StartForm : Form
             string? filePath = mode == TestMode.Control ? SaveResultFile(result) : null;
 
             using ResultForm resultForm = new(result, showReview, filePath);
-            resultForm.ShowDialog();
+            resultForm.ShowDialog(this);
         }
-
-        Show();
     }
 
     // Перед контрольною в режимі доброчесності: закрити інші копії програми і підтвердити правила

@@ -27,6 +27,7 @@ internal static class Program
         Application.SetCompatibleTextRenderingDefault(false);
 
         bool dragTest = args.Contains("--drag-test");
+        bool diagTopmost = args.Contains("--diag-topmost");
 
         // --all-questions <тека>: знімки всіх питань банку для перевірки розмітки
         int allIndex = Array.IndexOf(args, "--all-questions");
@@ -50,7 +51,11 @@ internal static class Program
 
             try
             {
-                if (dragTest)
+                if (diagTopmost)
+                {
+                    await TopmostDiagnostics.RunAsync();
+                }
+                else if (dragTest)
                 {
                     await scenarios.RunDragTestAsync();
                 }

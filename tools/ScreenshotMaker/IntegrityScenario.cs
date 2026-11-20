@@ -20,6 +20,10 @@ internal class IntegrityScenario
     [DllImport("user32.dll")] private static extern void mouse_event(uint flags, int dx, int dy, uint data, UIntPtr extra);
     [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(Point point);
     [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    private const uint WM_SYSCOMMAND = 0x0112;
+    private static readonly IntPtr SC_CLOSE = new(0xF060);
 
     private const uint MOUSEEVENTF_LEFTDOWN = 0x02;
     private const uint MOUSEEVENTF_LEFTUP = 0x04;
@@ -28,6 +32,9 @@ internal class IntegrityScenario
     // Скільки «думає» над питанням утиліта-учень: довше за поріг «дуже швидко» (8 с), щоб зразки
     // в таблиці вчителя були схожі на справжніх учнів (час на питання у файлах — справжній)
     public const int ThinkMs = 9000;
+
+    // Проблема, помічена під час «виходу» (перевіряється після кожного виходу)
+    private static string? awayProblem;
 
     private readonly Ui ui;
     private readonly string samples;   // тека зі зразками файлів результатів (з етапу 6)
@@ -124,13 +131,24 @@ internal class IntegrityScenario
         await ReturnToAsync(form);
         await CloseWarningIfShownAsync();
 
-        await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), null, Answer.Yes);
-        TestResult result = form.Result ?? throw new InvalidOperationException("Контрольна не завершилася");
+        // Alt+F4 (Windows надсилає вікну SC_CLOSE): запитання видно; «Ні» — контрольна триває
+        await ui.MessageShotAsync(form, () => PostMessage(form.Handle, WM_SYSCOMMAND, SC_CLOSE, IntPtr.Zero), null, Answer.No);
+        Expect(form.Visible && form.Result == null, "Alt+F4 і «Ні» — контрольна триває");
+
+        // «Завершити контрольну» і «Ні» — теж триває
+        await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), null, Answer.No);
+        Expect(form.Visible && form.Result == null, "«Завершити контрольну» і «Ні» — контрольна триває");
+
+        // «✕» угорі праворуч і «Так» — контрольну завершено, причина — «закрив вікно»
+        await ui.MessageShotAsync(form, () => Ui.Click(form, "btnCloseTest"), null, Answer.Yes);
+        TestResult result = form.Result ?? throw new InvalidOperationException("Контрольна не завершилася після «✕»");
+        Expect(result.Reason == FinishReason.WindowClosed, "«✕» — причина завершення «закрив вікно тесту»");
 
         Expect(result.Integrity!.Events.Any(e => e.Kind == IntegrityEventKind.SecondCopy), "спробу відкрити другу копію записано");
         Expect(!InstanceGuard.ControlIsRunning, "після контрольної позначку «іде контрольна» знято");
         SaveSample(result);
         Console.WriteLine("  Друга копія: під час контрольної не відкривається, спробу записано; після контрольної — дозволено");
+        Console.WriteLine("  Завершення: Alt+F4, «Завершити контрольну» і «✕» — запитання видно поверх тесту, «Ні» — тест триває, «Так» — завершено");
     }
 
     // ===================== Виходи з вікна і дострокове завершення =====================
@@ -153,9 +171,11 @@ internal class IntegrityScenario
         Answers.FillWithMistakes(form.CurrentView);
         await Task.Delay(1500);
         await ui.ShotAsync(form, 55);
+        Expect(ZOrder.IsTopMost(form.Handle), "поки учень у тесті, вікно тесту — поверх інших вікон");
 
         // Вихід 1: 3 секунди в іншій програмі -> попередження
         await ui.MessageShotAsync(form, () => _ = LeaveAndReturnAsync(form, 3000), 56, Answer.Ok, 30000);
+        ExpectNoAwayProblem();
 
         // Короткий вихід (частка секунди): записується, але не рахується
         await LeaveAndReturnAsync(form, 100);
@@ -178,10 +198,12 @@ internal class IntegrityScenario
         if (!shortCounted)
         {
             await ui.MessageShotAsync(form, () => _ = LeaveAndReturnAsync(form, 2500), null, Answer.Ok, 30000);
+            ExpectNoAwayProblem();
         }
 
         // Останній дозволений вихід -> дострокове завершення
         await ui.MessageShotAsync(form, () => _ = LeaveAndReturnAsync(form, 2500), 58, Answer.Ok, 30000);
+        ExpectNoAwayProblem();
         await Task.Delay(500);
 
         TestResult result = form.Result ?? throw new InvalidOperationException("Контрольна не завершилася достроково");
@@ -260,6 +282,21 @@ internal class IntegrityScenario
 
         SetForegroundWindow(window);
         await Task.Delay(milliseconds);
+
+        // Поки учень в іншій програмі, тест не має її перекривати (інакше Alt+Tab «не працює»)
+        // і не має забирати фокус назад
+        if (milliseconds >= 1000)
+        {
+            bool covered = ZOrder.IsTopMost(form.Handle) || !ZOrder.IsAbove(window, form.Handle);
+            bool stolen = GetForegroundWindow() != window;
+
+            if (covered || stolen)
+            {
+                awayProblem = covered
+                    ? "інша програма опинилася ПІД вікном тесту — Alt+Tab і Win+R були б «невидимими»"
+                    : "вікно тесту забрало фокус назад у іншої програми";
+            }
+        }
 
         notepad.CloseMainWindow();
 
@@ -406,6 +443,13 @@ internal class IntegrityScenario
 
         Expect(during == before + 1 && after == before, $"лічильник копій програми: {before} → {during} → {after}");
         Console.WriteLine("  Копії програми: відкриту копію помічено, після закриття — ні");
+    }
+
+    private static void ExpectNoAwayProblem()
+    {
+        string? problem = awayProblem;
+        awayProblem = null;
+        Expect(problem == null, problem ?? "");
     }
 
     private static void Expect(bool condition, string what)

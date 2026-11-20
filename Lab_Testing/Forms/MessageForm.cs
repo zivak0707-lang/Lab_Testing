@@ -90,6 +90,13 @@ public static class Dialogs
             return form.ShowDialog();
         }
 
+        // Власник «поверх усіх» (контрольна на весь екран): повідомлення теж має бути поверх усіх.
+        // Інакше Windows відкриє його ПІД вікном тесту, і тест чекатиме на відповідь у невидимому вікні
+        if (WindowsApi.IsTopMost(owner.Handle))
+        {
+            form.TopMost = true;
+        }
+
         return form.ShowDialog(owner);
     }
 }

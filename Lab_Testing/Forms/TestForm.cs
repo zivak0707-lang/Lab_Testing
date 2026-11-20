@@ -25,6 +25,7 @@ public partial class TestForm : Form
     private int monitorCount;                                // скільки моніторів зараз
     private DateTime noticeUntil;                            // до якого часу у смузі вгорі показано повідомлення
     private bool warningShown;                               // зараз відкрито попередження про вихід
+    private bool appActive = true;                           // учень зараз у програмі (не в іншій)
 
     public TestForm(TestSession session)
     {
@@ -530,14 +531,13 @@ public partial class TestForm : Form
     // Нічого не блокує: Alt+Tab, Win, Ctrl+Alt+Del і Alt+F4 працюють як завжди.
     // Програма лише помічає, що активним стало вікно іншої програми, і записує це
 
-    // Контрольна на весь екран (разом з панеллю задач) і поверх інших вікон.
-    // Тоді вікно, на яке учень перемкнувся Alt+Tab, лишається позаду тесту — підглядати незручно
+    // Контрольна на весь екран (разом з панеллю задач). «Поверх інших вікон» вмикається, коли вікно показано,
+    // і лише поки учень у тесті (див. WndProc)
     private void EnterFullScreen()
     {
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
         Bounds = Screen.FromPoint(Cursor.Position).Bounds;
-        TopMost = true;
         BackColor = Theme.ExamBackdrop;
         pnlExamBar.Visible = true;
         UpdateIntegrityBar();
@@ -581,8 +581,13 @@ public partial class TestForm : Form
         controlMarker = InstanceGuard.BeginControl(() => RunOnFormThread(SecondCopyAttempted));
 
         monitoring = true;
+        // Поверх інших вікон — якщо учень у тесті (якщо він уже в іншій програмі, тест її не перекриває)
+        if (ActiveForm == this)
+        {
+            WindowsApi.KeepOnTop(Handle);
+        }
+
         UpdateIntegrityBar();
-        Activate();
     }
 
     private void StopIntegrity()
@@ -602,6 +607,30 @@ public partial class TestForm : Form
     // Повідомлення Windows: активною стала інша програма / знову наша; змінився буфер обміну
     protected override void WndProc(ref Message m)
     {
+        // «Поверх усіх» — лише поки учень у тесті. Перейшов в іншу програму — тест відступає під її вікно
+        // (вона видна і працює), повернувся — тест знову поверх. Фокус програма ніколи не забирає сама
+        if (integrity != null && !finished && m.Msg == WindowsApi.WM_ACTIVATEAPP)
+        {
+            if (m.WParam == IntPtr.Zero)
+            {
+                appActive = false;
+
+                // Коли інше вікно вже стане активним (і якщо учень за цей час не повернувся)
+                BeginInvoke(new Action(() =>
+                {
+                    if (!appActive)
+                    {
+                        WindowsApi.StepAside(Handle);
+                    }
+                }));
+            }
+            else
+            {
+                appActive = true;
+                WindowsApi.KeepOnTop(Handle);   // до попередження — щоб і воно було поверх
+            }
+        }
+
         if (monitoring && !finished)
         {
             if (m.Msg == WindowsApi.WM_ACTIVATEAPP)
