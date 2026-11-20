@@ -2,7 +2,13 @@
   "settings": {
     "controlTimeMinutes": 15,
     "showReviewAfterControl": true,
-    "gradeMinPercent": [0, 9, 17, 26, 34, 42, 51, 59, 67, 76, 84, 92]
+    "gradeMinPercent": [0, 9, 17, 26, 34, 42, 51, 59, 67, 76, 84, 92],
+    "integrity": {
+      "enabled": true,
+      "exitLimit": 3,
+      "shortExitSeconds": 2,
+      "hideFromCapture": false
+    }
   },
   "questions": [
     {

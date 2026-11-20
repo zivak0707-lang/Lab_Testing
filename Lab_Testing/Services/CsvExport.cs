@@ -17,7 +17,7 @@ public static class CsvExport
 
         List<string> header = new() { "№", "ПІБ", "Група", "Дата", "Час проходження", "Спроба" };
         header.AddRange(Enum.GetValues<QuestionType>().Select((t, i) => $"П{i + 1} {t.ToUkrainian()}"));
-        header.AddRange(new[] { "Разом", "З", "%", "Оцінка", "Рівень", "Файл справжній", "Примітка", "Файл" });
+        header.AddRange(new[] { "Разом", "З", "%", "Оцінка", "Рівень", "Порушення", "Завершення", "Файл справжній", "Примітка", "Файл" });
         AppendRow(sb, header, separator);
 
         int number = 1;
@@ -45,6 +45,8 @@ public static class CsvExport
                 row.Add(r.Percent.ToString("0.#", culture));
                 row.Add(r.Grade.ToString());
                 row.Add(Grading.Level(r.Grade));
+                row.Add(IntegrityText.Summary(r));
+                row.Add(IntegrityText.FinishText(r));
             }
 
             row.Add(ResultChecks.StatusText(entry.Status));

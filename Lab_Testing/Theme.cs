@@ -28,6 +28,10 @@ public static class Theme
     public static readonly Color PartlyBack = Color.FromArgb(255, 238, 214);    // фон «частково правильно»
     public static readonly Color TheoryBack = Color.FromArgb(255, 249, 232);    // фон панелі теорії
     public static readonly Color TimerWarning = Color.FromArgb(255, 150, 140);  // таймер в останні хвилини
+    public static readonly Color ExamBackdrop = Color.FromArgb(33, 43, 54);     // фон навколо контрольної на весь екран
+    public static readonly Color IntegrityText = Color.FromArgb(255, 224, 130); // смуга режиму доброчесності
+    public static readonly Color Violation = Color.FromArgb(106, 27, 154);      // фіолетовий: порушення доброчесності
+    public static readonly Color ViolationBack = Color.FromArgb(243, 236, 250); // фон рядка з порушеннями
 
     // ---------- Шрифти ----------
     public static readonly Font CodeFont = new("Consolas", 11.5F, FontStyle.Bold);  // картки з кодом: int, &&, 3.14

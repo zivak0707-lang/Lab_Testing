@@ -27,8 +27,9 @@ public record ResultEntry(string FilePath, ResultFileStatus Status, TestResult? 
 public static class ResultFile
 {
     public const string FolderName = "Результати тесту C#";
-    public const string FormatName = "Lab_Testing.Result/2";
-    private const string OldFormatName = "Lab_Testing.Result/1";   // файли попередніх версій (лише загальний ключ)
+    public const string FormatName = "Lab_Testing.Result/3";
+    private const string OldFormatName = "Lab_Testing.Result/1";   // файли першої версії (лише загальний ключ)
+    private const string Version2FormatName = "Lab_Testing.Result/2";   // без режиму доброчесності
     public const string DefaultKeyId = "загальний";
 
     // Загальний ключ програми. Він є в публічному коді, тому файли з ним програма вчителя
@@ -178,7 +179,7 @@ public static class ResultFile
             return ResultFileStatus.Damaged;
         }
 
-        if (document == null || result == null || (result.Format != FormatName && result.Format != OldFormatName))
+        if (document == null || result == null || (result.Format is not (FormatName or Version2FormatName or OldFormatName)))
         {
             result = null;
             return ResultFileStatus.Damaged;

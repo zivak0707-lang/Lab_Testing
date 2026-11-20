@@ -55,6 +55,11 @@ namespace Lab_Testing
             btnNext = new Button();
             btnPrev = new Button();
             controlTimer = new System.Windows.Forms.Timer(components);
+            pnlExamBar = new Panel();
+            lblIntegrity = new Label();
+            btnMinimizeTest = new Button();
+            btnCloseTest = new Button();
+            toolTip = new ToolTip(components);
             pnlTop.SuspendLayout();
             pnlQuestionHeader.SuspendLayout();
             pnlTheory.SuspendLayout();
@@ -63,6 +68,7 @@ namespace Lab_Testing
             tabCheck.SuspendLayout();
             pnlCheck.SuspendLayout();
             pnlBottom.SuspendLayout();
+            pnlExamBar.SuspendLayout();
             SuspendLayout();
             //
             // pnlTop
@@ -368,12 +374,73 @@ namespace Lab_Testing
             btnPrev.UseVisualStyleBackColor = true;
             btnPrev.Click += BtnPrev_Click;
             //
+            // pnlExamBar
+            //
+            pnlExamBar.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            pnlExamBar.BackColor = Color.FromArgb(33, 43, 54);
+            pnlExamBar.Controls.Add(btnMinimizeTest);
+            pnlExamBar.Controls.Add(btnCloseTest);
+            pnlExamBar.Controls.Add(lblIntegrity);
+            pnlExamBar.Location = new Point(0, 0);
+            pnlExamBar.Name = "pnlExamBar";
+            pnlExamBar.Size = new Size(1180, 44);
+            pnlExamBar.TabIndex = 5;
+            pnlExamBar.Visible = false;
+            //
+            // btnMinimizeTest
+            //
+            btnMinimizeTest.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnMinimizeTest.Cursor = Cursors.Hand;
+            btnMinimizeTest.FlatAppearance.BorderSize = 0;
+            btnMinimizeTest.FlatAppearance.MouseOverBackColor = Color.FromArgb(60, 72, 86);
+            btnMinimizeTest.FlatStyle = FlatStyle.Flat;
+            btnMinimizeTest.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnMinimizeTest.ForeColor = Color.White;
+            btnMinimizeTest.Location = new Point(1088, 4);
+            btnMinimizeTest.Name = "btnMinimizeTest";
+            btnMinimizeTest.Size = new Size(42, 36);
+            btnMinimizeTest.TabIndex = 1;
+            btnMinimizeTest.TabStop = false;
+            btnMinimizeTest.Text = "—";
+            toolTip.SetToolTip(btnMinimizeTest, "Згорнути вікно тесту (буде записано як вихід з вікна)");
+            btnMinimizeTest.Click += BtnMinimizeTest_Click;
+            //
+            // btnCloseTest
+            //
+            btnCloseTest.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnCloseTest.Cursor = Cursors.Hand;
+            btnCloseTest.FlatAppearance.BorderSize = 0;
+            btnCloseTest.FlatAppearance.MouseOverBackColor = Color.FromArgb(196, 43, 28);
+            btnCloseTest.FlatStyle = FlatStyle.Flat;
+            btnCloseTest.Font = new Font("Segoe UI", 12F);
+            btnCloseTest.ForeColor = Color.White;
+            btnCloseTest.Location = new Point(1134, 4);
+            btnCloseTest.Name = "btnCloseTest";
+            btnCloseTest.Size = new Size(42, 36);
+            btnCloseTest.TabIndex = 2;
+            btnCloseTest.TabStop = false;
+            btnCloseTest.Text = "✕";
+            toolTip.SetToolTip(btnCloseTest, "Завершити контрольну");
+            btnCloseTest.Click += BtnCloseTest_Click;
+            //
+            // lblIntegrity
+            //
+            lblIntegrity.AutoSize = true;
+            lblIntegrity.Font = new Font("Segoe UI", 10.5F);
+            lblIntegrity.ForeColor = Color.FromArgb(255, 224, 130);
+            lblIntegrity.Location = new Point(16, 12);
+            lblIntegrity.Name = "lblIntegrity";
+            lblIntegrity.Size = new Size(300, 19);
+            lblIntegrity.TabIndex = 0;
+            lblIntegrity.Text = "Режим доброчесності: виходи з вікна тесту записуються";
+            //
             // TestForm
             //
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(245, 247, 250);
             ClientSize = new Size(1180, 680);
+            Controls.Add(pnlExamBar);
             Controls.Add(pnlContent);
             Controls.Add(pnlTheory);
             Controls.Add(pnlQuestionHeader);
@@ -386,6 +453,9 @@ namespace Lab_Testing
             Text = "Тестування з програмування на C#";
             FormClosing += TestForm_FormClosing;
             FormClosed += TestForm_FormClosed;
+            Shown += TestForm_Shown;
+            KeyUp += TestForm_KeyUp;
+            Resize += TestForm_Resize;
             // 
             // controlTimer
             // 
@@ -400,6 +470,8 @@ namespace Lab_Testing
             tabCheck.ResumeLayout(false);
             pnlCheck.ResumeLayout(false);
             pnlBottom.ResumeLayout(false);
+            pnlExamBar.ResumeLayout(false);
+            pnlExamBar.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -431,5 +503,10 @@ namespace Lab_Testing
         private Button btnReset;
         private Button btnFinish;
         private System.Windows.Forms.Timer controlTimer;
+        private Panel pnlExamBar;
+        private Label lblIntegrity;
+        private Button btnMinimizeTest;
+        private Button btnCloseTest;
+        private ToolTip toolTip;
     }
 }

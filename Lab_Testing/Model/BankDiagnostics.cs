@@ -17,7 +17,8 @@ public static class BankDiagnostics
         TextList,     // список рядків
         NumberList,   // список чисел
         Items,        // список карток { text, keep, category }
-        Rows          // список рядків таблиці { left, answer }
+        Rows,         // список рядків таблиці { left, answer }
+        Integrity     // розділ налаштувань доброчесності { enabled, exitLimit, … }
     }
 
     // Поле: назва людською мовою і вигляд значення
@@ -33,7 +34,16 @@ public static class BankDiagnostics
     {
         ["controlTimeMinutes"] = new("час контрольної", Kind.Number),
         ["showReviewAfterControl"] = new("розбір після контрольної", Kind.Bool),
-        ["gradeMinPercent"] = new("шкала оцінок", Kind.NumberList)
+        ["gradeMinPercent"] = new("шкала оцінок", Kind.NumberList),
+        ["integrity"] = new("режим доброчесності", Kind.Integrity)
+    };
+
+    private static readonly Dictionary<string, Field> IntegrityFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["enabled"] = new("увімкнено", Kind.Bool),
+        ["exitLimit"] = new("ліміт виходів", Kind.Number),
+        ["shortExitSeconds"] = new("поріг короткого виходу", Kind.Number),
+        ["hideFromCapture"] = new("захист від знімків екрана", Kind.Bool)
     };
 
     private static readonly Dictionary<string, Field> QuestionFields = new(StringComparer.OrdinalIgnoreCase)
@@ -70,7 +80,7 @@ public static class BankDiagnostics
     };
 
     // Усі відомі назви полів (для підказки «можливо, ви мали на увазі…»)
-    private static readonly string[] AllFieldNames = RootFields.Keys.Concat(SettingsFields.Keys)
+    private static readonly string[] AllFieldNames = RootFields.Keys.Concat(SettingsFields.Keys).Concat(IntegrityFields.Keys)
         .Concat(QuestionFields.Keys).Concat(ItemFields.Keys).Concat(RowFields.Keys).Distinct().ToArray();
 
     // Назва поля людською мовою (для повідомлень про зміст)
@@ -359,6 +369,22 @@ public static class BankDiagnostics
             if (!fields.TryGetValue(property.Name, out Field? field))
             {
                 errors.Add(UnknownField(property.Name, label));
+                continue;
+            }
+
+            // Вкладений розділ «integrity»: перевіряємо його поля так само
+            if (field.Kind == Kind.Integrity)
+            {
+                if (property.Value.ValueKind == JsonValueKind.Object)
+                {
+                    CheckFields(property.Value, IntegrityFields, "Налаштування доброчесності", errors);
+                }
+                else
+                {
+                    errors.Add($"{label}, поле «{field.Name}» ({property.Name}): потрібні фігурні дужки {{ … }} з полями " +
+                               "enabled, exitLimit, shortExitSeconds, hideFromCapture.");
+                }
+
                 continue;
             }
 

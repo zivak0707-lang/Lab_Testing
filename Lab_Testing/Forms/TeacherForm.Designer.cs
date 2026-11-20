@@ -30,6 +30,8 @@ namespace Lab_Testing
         {
             DataGridViewCellStyle headerStyle = new DataGridViewCellStyle();
             DataGridViewCellStyle noteStyle = new DataGridViewCellStyle();
+            DataGridViewCellStyle violationStyle = new DataGridViewCellStyle();
+            DataGridViewCellStyle nameStyle = new DataGridViewCellStyle();
             pnlTop = new Panel();
             lblSubtitle = new Label();
             lblTitle = new Label();
@@ -60,6 +62,7 @@ namespace Lab_Testing
             colQ5 = new DataGridViewTextBoxColumn();
             colTotal = new DataGridViewTextBoxColumn();
             colGrade = new DataGridViewTextBoxColumn();
+            colViolations = new DataGridViewTextBoxColumn();
             colStatus = new DataGridViewTextBoxColumn();
             colNote = new DataGridViewTextBoxColumn();
             statusStrip = new StatusStrip();
@@ -83,7 +86,7 @@ namespace Lab_Testing
             pnlTop.Dock = DockStyle.Top;
             pnlTop.Location = new Point(0, 0);
             pnlTop.Name = "pnlTop";
-            pnlTop.Size = new Size(1290, 70);
+            pnlTop.Size = new Size(1340, 70);
             pnlTop.TabIndex = 0;
             //
             // lblSubtitle
@@ -120,7 +123,7 @@ namespace Lab_Testing
             pnlToolbar.Dock = DockStyle.Top;
             pnlToolbar.Location = new Point(0, 70);
             pnlToolbar.Name = "pnlToolbar";
-            pnlToolbar.Size = new Size(1290, 56);
+            pnlToolbar.Size = new Size(1340, 56);
             pnlToolbar.TabIndex = 1;
             //
             // btnBankTools
@@ -142,7 +145,7 @@ namespace Lab_Testing
             pnlPasswordHint.Dock = DockStyle.Top;
             pnlPasswordHint.Location = new Point(0, 126);
             pnlPasswordHint.Name = "pnlPasswordHint";
-            pnlPasswordHint.Size = new Size(1290, 38);
+            pnlPasswordHint.Size = new Size(1340, 38);
             pnlPasswordHint.TabIndex = 4;
             pnlPasswordHint.Visible = false;
             //
@@ -151,7 +154,7 @@ namespace Lab_Testing
             btnCloseHint.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnCloseHint.FlatAppearance.BorderSize = 0;
             btnCloseHint.FlatStyle = FlatStyle.Flat;
-            btnCloseHint.Location = new Point(1246, 4);
+            btnCloseHint.Location = new Point(1296, 4);
             btnCloseHint.Name = "btnCloseHint";
             btnCloseHint.Size = new Size(30, 30);
             btnCloseHint.TabIndex = 2;
@@ -183,7 +186,7 @@ namespace Lab_Testing
             // btnChangePassword
             //
             btnChangePassword.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnChangePassword.Location = new Point(1106, 10);
+            btnChangePassword.Location = new Point(1156, 10);
             btnChangePassword.Name = "btnChangePassword";
             btnChangePassword.Size = new Size(164, 36);
             btnChangePassword.TabIndex = 4;
@@ -250,7 +253,7 @@ namespace Lab_Testing
             pnlGrid.Location = new Point(0, 126);
             pnlGrid.Name = "pnlGrid";
             pnlGrid.Padding = new Padding(14);
-            pnlGrid.Size = new Size(1290, 492);
+            pnlGrid.Size = new Size(1340, 492);
             pnlGrid.TabIndex = 2;
             //
             // lblDropHint
@@ -283,7 +286,7 @@ namespace Lab_Testing
             dgvResults.ColumnHeadersDefaultCellStyle = headerStyle;
             dgvResults.ColumnHeadersHeight = 44;
             dgvResults.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvResults.Columns.AddRange(new DataGridViewColumn[] { colNumber, colName, colGroup, colDate, colDuration, colAttempt, colQ1, colQ2, colQ3, colQ4, colQ5, colTotal, colGrade, colStatus, colNote });
+            dgvResults.Columns.AddRange(new DataGridViewColumn[] { colNumber, colName, colGroup, colDate, colDuration, colAttempt, colQ1, colQ2, colQ3, colQ4, colQ5, colTotal, colGrade, colViolations, colStatus, colNote });
             dgvResults.Dock = DockStyle.Fill;
             dgvResults.EnableHeadersVisualStyles = false;
             dgvResults.Location = new Point(14, 14);
@@ -294,7 +297,7 @@ namespace Lab_Testing
             dgvResults.RowTemplate.Height = 30;
             dgvResults.RowTemplate.MinimumHeight = 30;
             dgvResults.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvResults.Size = new Size(1262, 464);
+            dgvResults.Size = new Size(1312, 464);
             dgvResults.TabIndex = 0;
             dgvResults.CellDoubleClick += DgvResults_CellDoubleClick;
             dgvResults.DragDrop += DgvResults_DragDrop;
@@ -307,42 +310,44 @@ namespace Lab_Testing
             colNumber.HeaderText = "№";
             colNumber.Name = "colNumber";
             colNumber.ReadOnly = true;
-            colNumber.Width = 34;
+            colNumber.Width = 30;
             //
             // colName
             //
+            nameStyle.WrapMode = DataGridViewTriState.True;
+            colName.DefaultCellStyle = nameStyle;
             colName.HeaderText = "ПІБ";
             colName.Name = "colName";
             colName.ReadOnly = true;
-            colName.Width = 150;
+            colName.Width = 140;
             //
             // colGroup
             //
             colGroup.HeaderText = "Група";
             colGroup.Name = "colGroup";
             colGroup.ReadOnly = true;
-            colGroup.Width = 56;
+            colGroup.Width = 50;
             //
             // colDate
             //
             colDate.HeaderText = "Дата";
             colDate.Name = "colDate";
             colDate.ReadOnly = true;
-            colDate.Width = 122;
+            colDate.Width = 124;
             //
             // colDuration
             //
             colDuration.HeaderText = "Час (год:хв:с)";
             colDuration.Name = "colDuration";
             colDuration.ReadOnly = true;
-            colDuration.Width = 76;
+            colDuration.Width = 74;
             //
             // colAttempt
             //
             colAttempt.HeaderText = "Спроба";
             colAttempt.Name = "colAttempt";
             colAttempt.ReadOnly = true;
-            colAttempt.Width = 62;
+            colAttempt.Width = 56;
             //
             // colQ1
             //
@@ -350,7 +355,7 @@ namespace Lab_Testing
             colQ1.Name = "colQ1";
             colQ1.ReadOnly = true;
             colQ1.ToolTipText = "Питання 1: Кошик";
-            colQ1.Width = 44;
+            colQ1.Width = 42;
             //
             // colQ2
             //
@@ -358,7 +363,7 @@ namespace Lab_Testing
             colQ2.Name = "colQ2";
             colQ2.ReadOnly = true;
             colQ2.ToolTipText = "Питання 2: Таблиця відповідностей";
-            colQ2.Width = 44;
+            colQ2.Width = 42;
             //
             // colQ3
             //
@@ -366,7 +371,7 @@ namespace Lab_Testing
             colQ3.Name = "colQ3";
             colQ3.ReadOnly = true;
             colQ3.ToolTipText = "Питання 3: Номерки на категорії";
-            colQ3.Width = 44;
+            colQ3.Width = 42;
             //
             // colQ4
             //
@@ -374,7 +379,7 @@ namespace Lab_Testing
             colQ4.Name = "colQ4";
             colQ4.ReadOnly = true;
             colQ4.ToolTipText = "Питання 4: Слова в пропуски";
-            colQ4.Width = 44;
+            colQ4.Width = 42;
             //
             // colQ5
             //
@@ -382,7 +387,7 @@ namespace Lab_Testing
             colQ5.Name = "colQ5";
             colQ5.ReadOnly = true;
             colQ5.ToolTipText = "Питання 5: Порядок кроків";
-            colQ5.Width = 44;
+            colQ5.Width = 42;
             //
             // colTotal
             //
@@ -396,14 +401,24 @@ namespace Lab_Testing
             colGrade.HeaderText = "Оцінка";
             colGrade.Name = "colGrade";
             colGrade.ReadOnly = true;
-            colGrade.Width = 66;
+            colGrade.Width = 64;
+            //
+            // colViolations
+            //
+            violationStyle.WrapMode = DataGridViewTriState.True;
+            colViolations.DefaultCellStyle = violationStyle;
+            colViolations.HeaderText = "Порушення";
+            colViolations.Name = "colViolations";
+            colViolations.ReadOnly = true;
+            colViolations.ToolTipText = "Режим доброчесності: виходи з вікна тесту, знімки екрана, дострокове завершення";
+            colViolations.Width = 170;
             //
             // colStatus
             //
             colStatus.HeaderText = "Файл справжній";
             colStatus.Name = "colStatus";
             colStatus.ReadOnly = true;
-            colStatus.Width = 158;
+            colStatus.Width = 150;
             //
             // colNote
             //
@@ -419,7 +434,7 @@ namespace Lab_Testing
             statusStrip.Items.AddRange(new ToolStripItem[] { lblStatus });
             statusStrip.Location = new Point(0, 618);
             statusStrip.Name = "statusStrip";
-            statusStrip.Size = new Size(1290, 22);
+            statusStrip.Size = new Size(1340, 22);
             statusStrip.TabIndex = 3;
             //
             // lblStatus
@@ -450,7 +465,7 @@ namespace Lab_Testing
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(245, 247, 250);
-            ClientSize = new Size(1290, 640);
+            ClientSize = new Size(1340, 640);
             Controls.Add(pnlGrid);
             Controls.Add(statusStrip);
             Controls.Add(pnlPasswordHint);
@@ -506,6 +521,7 @@ namespace Lab_Testing
         private DataGridViewTextBoxColumn colQ5;
         private DataGridViewTextBoxColumn colTotal;
         private DataGridViewTextBoxColumn colGrade;
+        private DataGridViewTextBoxColumn colViolations;
         private DataGridViewTextBoxColumn colStatus;
         private DataGridViewTextBoxColumn colNote;
         private StatusStrip statusStrip;

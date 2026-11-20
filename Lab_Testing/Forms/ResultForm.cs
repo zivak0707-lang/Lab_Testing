@@ -17,7 +17,12 @@ public partial class ResultForm : Form
         string attempt = result.AttemptNumber > 1 ? $"  ·  спроба №{result.AttemptNumber}" : "";
         lblStudent.Text = $"{result.StudentName}  ·  група {result.Group}  ·  режим «{result.Mode.ToUkrainian()}»{attempt}";
         lblDetails.Text = $"{result.FinishedAt:dd.MM.yyyy HH:mm}  ·  час проходження: {Grading.FormatDuration(result.Duration)}" +
-                          (result.FinishedByTimeout ? "  ·  завершено, бо скінчився час" : "");
+                          result.Reason switch
+                          {
+                              FinishReason.TimeUp => "  ·  завершено, бо скінчився час",
+                              FinishReason.ExitLimit => "  ·  завершено достроково: ліміт виходів з вікна",
+                              _ => ""
+                          };
 
         lblGrade.Text = result.Grade.ToString();
         lblLevel.Text = Grading.Level(result.Grade);
@@ -40,6 +45,13 @@ public partial class ResultForm : Form
         }
 
         FillTable(result);
+        rtbReview.Clear();
+
+        // Режим доброчесності: що записано під час контрольної (бачать і учень, і вчитель)
+        if (result.Integrity != null)
+        {
+            FillIntegrity(result);
+        }
 
         if (showReview)
         {
@@ -47,9 +59,12 @@ public partial class ResultForm : Form
         }
         else
         {
-            RichTextFormatter.ShowHint(rtbReview,
-                "Розбір помилок після контрольної вимкнено викладачем. Ваші бали та оцінку показано вище.");
+            RichTextFormatter.AppendParagraph(rtbReview,
+                "Розбір помилок після контрольної вимкнено викладачем. Ваші бали та оцінку показано вище.", Theme.MutedText);
         }
+
+        rtbReview.SelectionStart = 0;   // прокрутити на початок
+        rtbReview.ScrollToCaret();
 
         // Таблиця сама виділяє перший рядок, коли отримує фокус, — знімаємо виділення
         Shown += (_, _) =>
@@ -103,11 +118,37 @@ public partial class ResultForm : Form
         dgvQuestions.ClearSelection();
     }
 
+    // Доброчесність: підсумок, налаштування і хронологія подій контрольної
+    private void FillIntegrity(TestResult result)
+    {
+        const int indent = 18;
+        IntegrityReport report = result.Integrity!;
+        bool violations = IntegrityText.HasViolations(result);
+
+        RichTextFormatter.AppendParagraph(rtbReview, "Режим доброчесності: " + IntegrityText.Summary(result),
+            violations ? Theme.Violation : Theme.Primary, bold: true);
+        RichTextFormatter.AppendParagraph(rtbReview, IntegrityText.SettingsText(report), Theme.MutedText, indent: indent);
+
+        foreach (string line in IntegrityText.Timeline(result))
+        {
+            RichTextFormatter.AppendParagraph(rtbReview, line, rtbReview.ForeColor, indent: indent, bullet: true);
+        }
+
+        // Час на кожне питання (якщо записано)
+        if (result.Questions.Any(q => q.Seconds > 0))
+        {
+            string times = string.Join(", ", result.Questions.Select((q, i) => $"П{i + 1} — {IntegrityText.Duration(q.Seconds)}"));
+            RichTextFormatter.AppendParagraph(rtbReview, "Час на питання: " + times, Theme.MutedText, indent: indent);
+        }
+
+        RichTextFormatter.AppendGap(rtbReview);
+        RichTextFormatter.AppendGap(rtbReview);
+    }
+
     // Розбір: для кожного питання — бали, помилки і пояснення (з виділеним кодом)
     private void FillReview(TestResult result)
     {
         const int indent = 18;   // відступ вмісту під заголовком питання
-        rtbReview.Clear();
 
         for (int i = 0; i < result.Questions.Count; i++)
         {
@@ -138,9 +179,6 @@ public partial class ResultForm : Form
 
             RichTextFormatter.AppendMarkup(rtbReview, q.Explanation, indent);
         }
-
-        rtbReview.SelectionStart = 0;   // прокрутити на початок
-        rtbReview.ScrollToCaret();
     }
 
     private static Color ScoreColor(QuestionResult q)

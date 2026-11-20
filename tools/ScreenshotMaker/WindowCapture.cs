@@ -183,6 +183,27 @@ internal static class WindowCapture
         return found;
     }
 
+    // Перше видиме вікно процесу (будь-якого класу) — наприклад, повідомлення другої копії програми
+    public static IntPtr FindAnyProcessWindow(int processId)
+    {
+        IntPtr found = IntPtr.Zero;
+
+        EnumWindows((hwnd, _) =>
+        {
+            GetWindowThreadProcessId(hwnd, out uint pid);
+
+            if (pid == processId && IsWindowVisible(hwnd))
+            {
+                found = hwnd;
+                return false;
+            }
+
+            return true;
+        }, IntPtr.Zero);
+
+        return found;
+    }
+
     // Натискає кнопку діалогу (OK, Так, Ні, Скасувати)
     public static void PressButton(IntPtr dialog, int buttonId)
     {

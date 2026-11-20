@@ -122,6 +122,12 @@ public partial class StartForm : Form
             }
 
             session.AttemptNumber = previous + 1;
+
+            // Режим доброчесності: інших копій програми бути не повинно, правила треба підтвердити
+            if (bank.Settings.Integrity.Enabled && !PrepareIntegrity(session))
+            {
+                return;
+            }
         }
 
         // Ховаємо стартову сторінку на час тесту і повертаємо її після закриття вікна тесту
@@ -152,6 +158,31 @@ public partial class StartForm : Form
         }
 
         Show();
+    }
+
+    // Перед контрольною в режимі доброчесності: закрити інші копії програми і підтвердити правила
+    private bool PrepareIntegrity(TestSession session)
+    {
+        int others = InstanceGuard.OtherCopies;
+
+        if (others > 0)
+        {
+            Dialogs.Warning(this,
+                $"Перед контрольною закрийте інші вікна програми «{AppInfo.Title}» (відкрито ще: {others}).\n\n" +
+                "Під час контрольної інша копія програми працювати не повинна.",
+                "Закрийте інші копії програми");
+            return false;
+        }
+
+        using IntegrityForm rules = new(bank.Settings);
+
+        if (rules.ShowDialog(this) != DialogResult.OK)
+        {
+            return false;
+        }
+
+        session.RulesAcceptedAt = rules.AcceptedAt;
+        return true;
     }
 
     private bool ConfirmRepeatedAttempt(int previous)

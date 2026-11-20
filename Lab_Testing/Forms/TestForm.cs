@@ -1,3 +1,5 @@
+using Microsoft.Win32;
+
 namespace Lab_Testing;
 
 // Вікно проходження тесту: питання по одному, перехід між ними, перевірка (режим «Навчання»)
@@ -12,6 +14,18 @@ public partial class TestForm : Form
     private int currentIndex;                                // поточне питання (від 0)
     private bool finished;                                   // тест завершено — закривати без запитань
 
+    // Час на кожному питанні (для вчителя: підозріло швидкі відповіді)
+    private readonly double[] questionSeconds;
+    private DateTime? questionSince;                         // відколи учень у вікні на поточному питанні (null — поза вікном)
+
+    // Режим доброчесності контрольної (null — вимкнено або це «Навчання»)
+    private readonly IntegrityMonitor? integrity;
+    private bool monitoring;                                 // виходи відстежуються (з моменту показу вікна)
+    private IDisposable? controlMarker;                      // позначка «іде контрольна» для інших копій програми
+    private int monitorCount;                                // скільки моніторів зараз
+    private DateTime noticeUntil;                            // до якого часу у смузі вгорі показано повідомлення
+    private bool warningShown;                               // зараз відкрито попередження про вихід
+
     public TestForm(TestSession session)
     {
         InitializeComponent();
@@ -19,6 +33,7 @@ public partial class TestForm : Form
         lastChecks = new QuestionResult?[session.Questions.Count];
         checkCounts = new int[session.Questions.Count];
         answerShown = new bool[session.Questions.Count];
+        questionSeconds = new double[session.Questions.Count];
 
         lblStudent.Text = $"{session.StudentName}  ·  група {session.Group}  ·  режим «{session.Mode.ToUkrainian()}»";
 
@@ -37,6 +52,7 @@ public partial class TestForm : Form
         CreateStepButtons();
         ShowQuestion(0);
         session.StartedAt = DateTime.Now;
+        questionSince = session.StartedAt;
 
         // Контрольна: таймер зворотного відліку
         if (!training)
@@ -46,10 +62,26 @@ public partial class TestForm : Form
             UpdateTimer();
             controlTimer.Start();
         }
+
+        // Режим доброчесності: вікно на весь екран поверх інших (до створення вікна — так Windows не перестворює його)
+        if (!training && session.Settings.Integrity.Enabled)
+        {
+            integrity = new IntegrityMonitor(session.Settings.Integrity);
+
+            if (session.RulesAcceptedAt is DateTime accepted)
+            {
+                integrity.Add(IntegrityEventKind.RulesAccepted, accepted);
+            }
+
+            EnterFullScreen();
+        }
     }
 
     // Підсумок тесту (з'являється після завершення; null — учень вийшов, не завершивши)
     public TestResult? Result { get; private set; }
+
+    // Що записав режим доброчесності (null — вимкнено); для самоперевірок
+    public IntegrityReport? IntegrityReport => integrity?.Report;
 
     // Подання поточного питання
     public QuestionView CurrentView => views[currentIndex];
@@ -66,6 +98,7 @@ public partial class TestForm : Form
     // Показує питання з номером index
     public void ShowQuestion(int index)
     {
+        AddQuestionTime(DateTime.Now);   // час іде попередньому питанню
         currentIndex = index;
         Question question = session.Questions[index];
 
@@ -333,7 +366,7 @@ public partial class TestForm : Form
     {
         if (AskFinish())
         {
-            Finish(byTimeout: false);
+            Finish(FinishReason.Student);
         }
     }
 
@@ -356,6 +389,13 @@ public partial class TestForm : Form
     private void ControlTimer_Tick(object? sender, EventArgs e)
     {
         UpdateTimer();
+
+        // Повідомлення у смузі вгорі показуємо кілька секунд, потім — знову стан виходів
+        if (integrity != null && noticeUntil != DateTime.MinValue && DateTime.Now >= noticeUntil)
+        {
+            noticeUntil = DateTime.MinValue;
+            UpdateIntegrityBar();
+        }
     }
 
     // Залишок рахуємо від часу початку (а не кількості тиків), тому таймер не «пливе»
@@ -378,7 +418,7 @@ public partial class TestForm : Form
     private void TimeIsUp()
     {
         controlTimer.Stop();
-        PrepareResult(byTimeout: true);
+        PrepareResult(FinishReason.TimeUp);
 
         Dialogs.Info(this, "Час вийшов! Контрольну завершено автоматично.\n\n" +
                            "Враховано всі відповіді, які ви встигли дати. Результат буде збережено у файл.",
@@ -391,30 +431,54 @@ public partial class TestForm : Form
     // ===================== Підсумок =====================
 
     // Перевіряє всі питання, складає підсумок і закриває вікно
-    private void Finish(bool byTimeout)
+    private void Finish(FinishReason reason)
     {
-        PrepareResult(byTimeout);
+        PrepareResult(reason);
         DialogResult = DialogResult.OK;
         Close();
     }
 
     // Перевіряє всі питання і складає підсумок (після цього тест завершено — змінити відповіді не можна)
-    private void PrepareResult(bool byTimeout)
+    private void PrepareResult(FinishReason reason)
     {
         controlTimer.Stop();
+        DateTime now = DateTime.Now;
+        AddQuestionTime(now);
+        questionSince = null;
+
+        // Якщо учень саме поза вікном — вихід триває до кінця контрольної
+        integrity?.Close(now);
+        monitoring = false;
+
         List<QuestionResult> results = views.Select(v => v.Evaluate(highlight: false)).ToList();
 
-        // У «Навчанні» позначаємо питання, де учень відкривав правильну відповідь
         for (int i = 0; i < results.Count; i++)
         {
+            // У «Навчанні» позначаємо питання, де учень відкривав правильну відповідь
             if (answerShown[i])
             {
                 results[i].Summary += " · відповідь переглянуто";
             }
+
+            // У контрольній — скільки часу учень провів на питанні
+            if (IsControl)
+            {
+                results[i].Seconds = (int)Math.Round(questionSeconds[i]);
+            }
         }
 
-        Result = TestResult.Create(session, results, DateTime.Now, byTimeout);
+        Result = TestResult.Create(session, results, now, reason, integrity?.Report);
         finished = true;
+    }
+
+    // Час на поточному питанні: додаємо відрізок від questionSince до now (лише коли учень у вікні)
+    private void AddQuestionTime(DateTime now)
+    {
+        if (questionSince is DateTime since)
+        {
+            questionSeconds[currentIndex] += (now - since).TotalSeconds;
+            questionSince = now;
+        }
     }
 
     // Закриття вікна хрестиком до завершення тесту.
@@ -431,7 +495,7 @@ public partial class TestForm : Form
         {
             if (e.CloseReason != CloseReason.UserClosing || AskFinish())
             {
-                PrepareResult(byTimeout: false);
+                PrepareResult(FinishReason.WindowClosed);
                 DialogResult = DialogResult.OK;
             }
             else
@@ -450,14 +514,331 @@ public partial class TestForm : Form
         e.Cancel = !Dialogs.Ask(this, "Вийти з тесту? Відповіді не буде збережено.", "Вихід", warning: true);
     }
 
-    // Звільняємо подання питань, які зараз не показані у вікні
+    // Звільняємо подання питань, які зараз не показані у вікні, і припиняємо стежити за виходами
     private void TestForm_FormClosed(object? sender, FormClosedEventArgs e)
     {
         controlTimer.Stop();
+        StopIntegrity();
 
         foreach (QuestionView view in views)
         {
             view.Dispose();
         }
+    }
+
+    // ===================== Режим доброчесності (лише «Контрольна») =====================
+    // Нічого не блокує: Alt+Tab, Win, Ctrl+Alt+Del і Alt+F4 працюють як завжди.
+    // Програма лише помічає, що активним стало вікно іншої програми, і записує це
+
+    // Контрольна на весь екран (разом з панеллю задач) і поверх інших вікон.
+    // Тоді вікно, на яке учень перемкнувся Alt+Tab, лишається позаду тесту — підглядати незручно
+    private void EnterFullScreen()
+    {
+        FormBorderStyle = FormBorderStyle.None;
+        StartPosition = FormStartPosition.Manual;
+        Bounds = Screen.FromPoint(Cursor.Position).Bounds;
+        TopMost = true;
+        BackColor = Theme.ExamBackdrop;
+        pnlExamBar.Visible = true;
+        UpdateIntegrityBar();
+    }
+
+    // Вміст тесту — посередині екрана у звичному розмірі, вгорі — смуга режиму доброчесності
+    private void TestForm_Resize(object? sender, EventArgs e)
+    {
+        if (integrity == null || WindowState == FormWindowState.Minimized || ClientSize.Height == 0)
+        {
+            return;
+        }
+
+        Size content = new(LogicalToDeviceUnits(1180), LogicalToDeviceUnits(680));
+        int bar = pnlExamBar.Height;
+        int side = Math.Max(0, (ClientSize.Width - content.Width) / 2);
+        int top = Math.Max(bar + LogicalToDeviceUnits(6), (ClientSize.Height - content.Height) / 2);
+        int bottom = Math.Max(0, ClientSize.Height - top - content.Height);
+
+        Padding = new Padding(side, top, side, bottom);
+        pnlExamBar.SetBounds(0, 0, ClientSize.Width, bar);
+    }
+
+    // Вікно показано: починаємо відстежувати виходи, знімки екрана, монітори і другу копію програми
+    private void TestForm_Shown(object? sender, EventArgs e)
+    {
+        if (integrity == null)
+        {
+            return;
+        }
+
+        IntegrityReport report = integrity.Report;
+        report.Monitors = monitorCount = Screen.AllScreens.Length;
+        report.RemoteSession = WindowsApi.IsRemoteSession;
+        report.CaptureProtection = integrity.Settings.HideFromCapture ? WindowsApi.HideFromCapture(Handle) : "вимкнено";
+
+        KeyPreview = true;   // щоб помітити клавішу Print Screen, хоч би на якій картці був фокус
+        WindowsApi.WatchClipboard(Handle, true);
+        SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
+        SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
+        controlMarker = InstanceGuard.BeginControl(() => RunOnFormThread(SecondCopyAttempted));
+
+        monitoring = true;
+        UpdateIntegrityBar();
+        Activate();
+    }
+
+    private void StopIntegrity()
+    {
+        monitoring = false;
+        controlMarker?.Dispose();
+        controlMarker = null;
+
+        if (integrity != null)
+        {
+            SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
+            SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+            WindowsApi.WatchClipboard(Handle, false);
+        }
+    }
+
+    // Повідомлення Windows: активною стала інша програма / знову наша; змінився буфер обміну
+    protected override void WndProc(ref Message m)
+    {
+        if (monitoring && !finished)
+        {
+            if (m.Msg == WindowsApi.WM_ACTIVATEAPP)
+            {
+                if (m.WParam == IntPtr.Zero)
+                {
+                    StudentLeft();
+                }
+                else
+                {
+                    BeginInvoke(new Action(StudentReturned));
+                }
+            }
+            else if (m.Msg == WindowsApi.WM_CLIPBOARDUPDATE)
+            {
+                BeginInvoke(new Action(ClipboardChanged));
+            }
+        }
+
+        base.WndProc(ref m);
+    }
+
+    // Учень перейшов в іншу програму (Alt+Tab, клік в інше вікно, згортання). Власні діалоги тесту виходом не є
+    private void StudentLeft()
+    {
+        DateTime now = DateTime.Now;
+        AddQuestionTime(now);
+        questionSince = null;
+        integrity!.Leave(now, currentIndex + 1);
+    }
+
+    // Учень повернувся: записуємо вихід і показуємо, що його записано
+    private void StudentReturned()
+    {
+        if (finished || integrity == null || !integrity.IsAway)
+        {
+            return;
+        }
+
+        DateTime now = DateTime.Now;
+        IntegrityEvent? exit = integrity.Return(now);
+        questionSince = now;
+
+        if (exit == null)
+        {
+            return;
+        }
+
+        UpdateIntegrityBar();
+
+        if (exit.Kind == IntegrityEventKind.ShortExit)
+        {
+            ShowNotice($"Коротку втрату фокусу ({exit.Seconds} с) записано — вона не рахується як вихід.");
+            return;
+        }
+
+        if (integrity.LimitReached)
+        {
+            FinishEarly();
+            return;
+        }
+
+        // Одне попередження за раз: якщо учень вийде, поки воно відкрите, — лише оновимо смугу вгорі
+        if (!warningShown)
+        {
+            warningShown = true;
+            Dialogs.Warning(this, ExitWarningText(exit), "Вихід з вікна тесту записано");
+            warningShown = false;
+        }
+    }
+
+    private string ExitWarningText(IntegrityEvent exit)
+    {
+        int limit = integrity!.Settings.ExitLimit;
+        int exits = integrity.Report.Exits;
+
+        string rule = limit == 0
+            ? "Кількість виходів не обмежено, але кожен вихід видно вчителю."
+            : integrity.ExitsLeft == 1
+                ? $"Зараховано виходів: {exits} з {limit}. Наступний вихід завершить контрольну достроково."
+                : $"Зараховано виходів: {exits} з {limit}. Після {limit}-го виходу контрольну буде завершено достроково " +
+                  "з тими відповідями, які ви встигли дати.";
+
+        return $"Ви вийшли з вікна контрольної на {IntegrityText.Duration(exit.Seconds)} (питання {exit.Question}).\n\n" +
+               "Цей вихід записано у файл результату — вчитель його побачить.\n\n" + rule;
+    }
+
+    // Ліміт виходів вичерпано: контрольна завершується з поточними відповідями
+    private void FinishEarly()
+    {
+        // Закриваємо відкриті діалоги тесту (наприклад, «Завершити контрольну?»)
+        foreach (Form owned in OwnedForms)
+        {
+            owned.Close();
+        }
+
+        int exits = integrity!.Report.Exits;
+        integrity.Add(IntegrityEventKind.EarlyFinish, DateTime.Now, currentIndex + 1, $"зараховано виходів: {exits}");
+        PrepareResult(FinishReason.ExitLimit);
+
+        Dialogs.Warning(this,
+            $"Контрольну завершено достроково: ви вийшли з вікна тесту {IntegrityText.Times(exits)} — " +
+            "це ліміт, встановлений вчителем.\n\n" +
+            "Враховано всі відповіді, які ви встигли дати. Результат разом із записом усіх виходів буде збережено у файл.",
+            "Контрольну завершено достроково");
+
+        DialogResult = DialogResult.OK;
+        Close();
+    }
+
+    // Знімок екрана: клавіша Print Screen у вікні тесту або зображення, що потрапило в буфер обміну.
+    // Вміст буфера не читаємо — лише перевіряємо, чи там зображення
+    private void TestForm_KeyUp(object? sender, KeyEventArgs e)
+    {
+        if (monitoring && !finished && e.KeyCode == Keys.PrintScreen)
+        {
+            integrity!.AddScreenshot(DateTime.Now, currentIndex + 1, "клавіша Print Screen");
+            ShowNotice("Спробу зробити знімок екрана записано.");
+        }
+    }
+
+    private void ClipboardChanged()
+    {
+        if (!monitoring || finished)
+        {
+            return;
+        }
+
+        try
+        {
+            if (Clipboard.ContainsImage())
+            {
+                integrity!.AddScreenshot(DateTime.Now, currentIndex + 1, "зображення в буфері обміну");
+                ShowNotice("Спробу зробити знімок екрана записано.");
+            }
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            // буфер обміну саме зайнятий іншою програмою — пропускаємо
+        }
+    }
+
+    // Під'єднали чи від'єднали монітор: записуємо і знову розтягуємо тест на весь екран
+    private void SystemEvents_DisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        RunOnFormThread(() =>
+        {
+            int count = Screen.AllScreens.Length;
+
+            if (monitoring && count != monitorCount)
+            {
+                integrity!.Add(IntegrityEventKind.Monitors, DateTime.Now, currentIndex + 1, $"стало {count}");
+                monitorCount = count;
+            }
+
+            if (!finished && WindowState != FormWindowState.Minimized)
+            {
+                Bounds = Screen.FromControl(this).Bounds;
+            }
+        });
+    }
+
+    // Під час контрольної до комп'ютера підключились через віддалений робочий стіл
+    private void SystemEvents_SessionSwitch(object? sender, SessionSwitchEventArgs e)
+    {
+        if (e.Reason == SessionSwitchReason.RemoteConnect)
+        {
+            RunOnFormThread(() =>
+            {
+                if (monitoring)
+                {
+                    integrity!.Add(IntegrityEventKind.RemoteSession, DateTime.Now, currentIndex + 1, "підключено під час контрольної");
+                }
+            });
+        }
+    }
+
+    // Хтось намагався відкрити ще одну копію програми (вона не відкрилася)
+    private void SecondCopyAttempted()
+    {
+        if (monitoring && !finished)
+        {
+            integrity!.Add(IntegrityEventKind.SecondCopy, DateTime.Now, currentIndex + 1);
+            ShowNotice("Спробу відкрити ще одну копію програми записано.");
+        }
+    }
+
+    // Події Windows приходять з інших потоків — виконуємо дію в потоці вікна
+    private void RunOnFormThread(Action action)
+    {
+        try
+        {
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(action);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // вікно саме закривається — подія вже не потрібна
+        }
+    }
+
+    // «—»: згорнути вікно тесту. Це звичайний вихід з вікна — його буде записано
+    private void BtnMinimizeTest_Click(object? sender, EventArgs e)
+    {
+        WindowState = FormWindowState.Minimized;
+    }
+
+    // «✕»: як хрестик у звичайному вікні — завершити контрольну (з підтвердженням)
+    private void BtnCloseTest_Click(object? sender, EventArgs e)
+    {
+        Close();
+    }
+
+    // Смуга вгорі: що відстежується і скільки виходів уже зараховано
+    private void UpdateIntegrityBar()
+    {
+        if (integrity == null || noticeUntil != DateTime.MinValue)
+        {
+            return;
+        }
+
+        IntegrityReport report = integrity.Report;
+        int limit = integrity.Settings.ExitLimit;
+        string exits = limit > 0 ? $"зараховано виходів: {report.Exits} з {limit}" : $"записано виходів: {report.Exits}";
+        string capture = integrity.Settings.HideFromCapture ? "  ·  вікно сховано від знімків екрана" : "";
+
+        lblIntegrity.Text = $"Режим доброчесності  ·  виходи з вікна тесту записуються  ·  {exits}{capture}";
+        lblIntegrity.ForeColor = report.Exits > 0 ? Theme.TimerWarning : Theme.IntegrityText;
+    }
+
+    // Повідомлення у смузі вгорі на кілька секунд (короткий вихід, знімок екрана)
+    private void ShowNotice(string text)
+    {
+        noticeUntil = DateTime.Now.AddSeconds(6);
+        lblIntegrity.Text = text;
+        lblIntegrity.ForeColor = Color.White;
     }
 }

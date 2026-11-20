@@ -9,6 +9,18 @@ internal static class Program
         // Стандартні налаштування WinForms (візуальні стилі, DPI) з файлу проєкту
         ApplicationConfiguration.Initialize();
 
+        // Під час контрольної ще одну копію програми не відкриваємо: у ній можна було б
+        // перевіряти відповіді в «Навчанні». Копія з контрольною запише цю спробу
+        if (InstanceGuard.ControlIsRunning)
+        {
+            InstanceGuard.NotifyControl();
+            Dialogs.Warning(null, "Зараз на цьому комп'ютері триває контрольна.\n\n" +
+                                  "Ще одну копію програми можна відкрити лише після її завершення. " +
+                                  "Спробу відкрити програму записано — вчитель її побачить.",
+                AppInfo.Title);
+            return;
+        }
+
         QuestionBankData bank;
         string bankSource;
 
@@ -23,6 +35,15 @@ internal static class Program
             return;
         }
 
-        Application.Run(new StartForm(bank, bankSource));
+        InstanceGuard.Register();
+
+        try
+        {
+            Application.Run(new StartForm(bank, bankSource));
+        }
+        finally
+        {
+            InstanceGuard.Unregister();
+        }
     }
 }

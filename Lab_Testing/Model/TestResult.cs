@@ -13,6 +13,7 @@ public class TestResult
     public DateTime FinishedAt { get; set; }
     public int DurationSeconds { get; set; }
     public bool FinishedByTimeout { get; set; }        // контрольну завершено, бо скінчився час
+    public FinishReason EndReason { get; set; }        // чому завершено (сам, закрив вікно, час, достроково)
     public List<QuestionResult> Questions { get; set; } = new();
     public double TotalScore { get; set; }
     public double MaxScore { get; set; }
@@ -23,14 +24,20 @@ public class TestResult
     public int AttemptNumber { get; set; } = 1;        // номер спроби контрольної на цьому комп'ютері
     public string Computer { get; set; } = "";         // ім'я комп'ютера, на якому проходили тест
     public string AppVersion { get; set; } = "";
+    public IntegrityReport? Integrity { get; set; }    // режим доброчесності: виходи з вікна та інші події (null — вимкнено)
     public string KeyId { get; set; } = "";            // номер ключа, яким підписано файл (див. TeacherKey)
     public string Signature { get; set; } = "";        // підпис файлу (див. ResultFile)
 
     [JsonIgnore]
     public TimeSpan Duration => TimeSpan.FromSeconds(DurationSeconds);
 
+    // Чому завершено (у файлах попередніх версій була лише позначка «скінчився час»)
+    [JsonIgnore]
+    public FinishReason Reason => FinishedByTimeout ? FinishReason.TimeUp : EndReason;
+
     // Складає підсумок із результатів перевірки всіх питань
-    public static TestResult Create(TestSession session, List<QuestionResult> results, DateTime finishedAt, bool byTimeout)
+    public static TestResult Create(TestSession session, List<QuestionResult> results, DateTime finishedAt,
+        FinishReason reason, IntegrityReport? integrity = null)
     {
         double total = Math.Round(results.Sum(r => r.Score), 1);
         double max = results.Sum(r => r.MaxScore);
@@ -48,7 +55,9 @@ public class TestResult
             StartedAt = started,
             FinishedAt = finished,
             DurationSeconds = (int)(finished - started).TotalSeconds,
-            FinishedByTimeout = byTimeout,
+            FinishedByTimeout = reason == FinishReason.TimeUp,
+            EndReason = reason,
+            Integrity = integrity,
             Questions = results,
             TotalScore = total,
             MaxScore = max,

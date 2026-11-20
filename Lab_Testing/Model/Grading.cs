@@ -16,6 +16,7 @@ public class QuestionResult
     public int Total { get; set; }                          // з скількох (Score = 20 × Correct / Total)
     public string Summary { get; set; } = "";               // коротко: «правильно 4 з 6»
     public List<string> Mistakes { get; set; } = new();     // опис кожної помилки разом із правильною відповіддю
+    public int Seconds { get; set; }                        // скільки секунд учень провів на цьому питанні (контрольна)
 
     // Пояснення з банку (для сторінки результату). У файл результату не пишеться:
     // учні пересилають файли, і пояснення з відповідями не повинні «гуляти» між ними

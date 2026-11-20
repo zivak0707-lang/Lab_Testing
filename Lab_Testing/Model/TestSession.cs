@@ -34,6 +34,9 @@ public class TestSession
     // Номер спроби контрольної на цьому комп'ютері (1 — перша)
     public int AttemptNumber { get; set; } = 1;
 
+    // Коли учень підтвердив правила контрольної (режим доброчесності; null — правил не показували)
+    public DateTime? RulesAcceptedAt { get; set; }
+
     public TestSession(QuestionBankData bank, string studentName, string group, TestMode mode, int? seed = null)
     {
         StudentName = studentName;

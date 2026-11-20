@@ -6,8 +6,8 @@ namespace ScreenshotMaker;
 // Сценарії знімків для кожного етапу
 internal class Scenarios
 {
-    private const string StudentName = "Іваненко Олена Петрівна";
-    private const string StudentGroup = "471";
+    internal const string StudentName = "Іваненко Олена Петрівна";
+    internal const string StudentGroup = "471";
 
     private readonly Ui ui;
 
@@ -23,7 +23,7 @@ internal class Scenarios
     }
 
     // Питання, які видно на знімках для звіту: кошик №1, таблиця №6, номерки №9, пропуски №13, кроки №20
-    private static readonly int[] MainQuestionIds = { 1, 6, 9, 13, 20 };
+    internal static readonly int[] MainQuestionIds = { 1, 6, 9, 13, 20 };
 
     // Знімки всіх питань банку (порожніх і заповнених) у теку dir — для перевірки розмітки
     public static async Task RunAllQuestionsAsync(string dir)
@@ -81,6 +81,7 @@ internal class Scenarios
         if (maxStage >= 7)
         {
             await Stage7Async();
+            await new IntegrityScenario(ui).RunAsync();
         }
     }
 
@@ -271,6 +272,7 @@ internal class Scenarios
             {
                 form.ShowQuestion(i);
                 students[s].Fill(form.CurrentView);
+                await Task.Delay(IntegrityScenario.ThinkMs);   // учень думає над питанням (інакше — «дуже швидко»)
             }
 
             await ui.MessageShotAsync(form, () => Ui.Click(form, "btnFinish"), null, Answer.Yes);
@@ -342,6 +344,7 @@ internal class Scenarios
         Console.WriteLine("Етап 5: контрольна і файл результату");
 
         TestSession session = CreateSession(TestMode.Control, MainQuestionIds);
+        session.Settings.Integrity.Enabled = false;   // етап 5 — контрольна без режиму доброчесності (він — на етапі 7.2б)
         TestForm form = new(session);
         form.Show();
         await Task.Delay(300);
@@ -382,6 +385,7 @@ internal class Scenarios
         // Таймер і «Час вийшов»: банк з обмеженням 1 хвилина (чекаємо її по-справжньому)
         QuestionBankData shortBank = QuestionBank.Load(out _);
         shortBank.Settings.ControlTimeMinutes = 1;
+        shortBank.Settings.Integrity.Enabled = false;
         TestSession shortSession = new(shortBank, StudentName, StudentGroup, TestMode.Control, session.Seed);
         TestForm shortForm = new(shortSession);
         shortForm.Show();
@@ -533,7 +537,7 @@ internal class Scenarios
     }
 
     // Спроба тесту, у яку потрапили саме ці питання (підбираємо seed, щоб знімки були відтворювані)
-    private static TestSession CreateSession(TestMode mode, params int[] wantedIds)
+    internal static TestSession CreateSession(TestMode mode, params int[] wantedIds)
     {
         QuestionBankData bank = QuestionBank.Load(out _);
 

@@ -256,6 +256,16 @@ public static class QuestionBank
         {
             errors.Add("Налаштування: gradeMinPercent має містити 12 чисел, що починаються з 0 і зростають (не більше 100).");
         }
+
+        if (s.Integrity.ExitLimit < 0 || s.Integrity.ExitLimit > 20)
+        {
+            errors.Add("Налаштування доброчесності: exitLimit має бути від 0 до 20 (0 — виходи лише записуються).");
+        }
+
+        if (s.Integrity.ShortExitSeconds < 0 || s.Integrity.ShortExitSeconds > 10)
+        {
+            errors.Add("Налаштування доброчесності: shortExitSeconds має бути від 0 до 10 секунд.");
+        }
     }
 
     // «Кошик»: є і потрібні, і зайві картки

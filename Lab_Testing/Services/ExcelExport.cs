@@ -12,14 +12,18 @@ public static class ExcelExport
     private static readonly XLColor ModifiedBack = XLColor.FromArgb(252, 230, 228);
     private static readonly XLColor OtherKeyBack = XLColor.FromArgb(255, 238, 214);
     private static readonly XLColor DamagedBack = XLColor.FromArgb(238, 240, 243);
+    private static readonly XLColor ViolationBack = XLColor.FromArgb(243, 236, 250);
+    private static readonly XLColor ViolationText = XLColor.FromArgb(106, 27, 154);
 
-    private const double NoteWidth = 70;     // ширина стовпця «Примітка»
-    private const double LineHeight = 15;    // висота рядка тексту (шрифт Calibri 11), пункти
+    private const double NoteWidth = 70;        // ширина стовпця «Примітка»
+    private const double ViolationsWidth = 34;  // ширина стовпця «Порушення»
+    private const double LineHeight = 15;       // висота рядка тексту (шрифт Calibri 11), пункти
 
     public static void Save(string path, IReadOnlyList<ResultEntry> entries, BankSettings settings)
     {
         using XLWorkbook book = new();
         WriteResults(book.Worksheets.Add("Результати"), entries, settings);
+        WriteEvents(book.Worksheets.Add("Події"), entries);
         WriteLegend(book.Worksheets.Add("Пояснення"), settings);
         book.SaveAs(path);
     }
@@ -30,13 +34,14 @@ public static class ExcelExport
     {
         List<string> header = new() { "№", "ПІБ", "Група", "Дата", "Час проходження", "Спроба" };
         header.AddRange(Enum.GetValues<QuestionType>().Select((t, i) => $"П{i + 1} {t.ToUkrainian()}"));
-        header.AddRange(new[] { "Разом (з 100)", "%", "Оцінка", "Рівень", "Файл справжній", "Примітка", "Файл" });
+        header.AddRange(new[] { "Разом (з 100)", "%", "Оцінка", "Рівень", "Порушення", "Завершення", "Файл справжній", "Примітка", "Файл" });
 
         for (int c = 0; c < header.Count; c++)
         {
             sheet.Cell(1, c + 1).Value = header[c];
         }
 
+        int violationsColumn = header.IndexOf("Порушення") + 1;
         int noteColumn = header.IndexOf("Примітка") + 1;
         int statusColumn = header.IndexOf("Файл справжній") + 1;
         int row = 2;
@@ -77,12 +82,27 @@ public static class ExcelExport
                 sheet.Cell(row, col).Value = r.Grade;
                 sheet.Cell(row, col++).Style.Font.Bold = true;
                 sheet.Cell(row, col++).Value = Grading.Level(r.Grade);
+                sheet.Cell(row, col++).Value = IntegrityText.Summary(r);
+                sheet.Cell(row, col++).Value = IntegrityText.FinishText(r);
             }
 
             sheet.Cell(row, statusColumn).Value = ResultChecks.StatusText(entry.Status);
             sheet.Cell(row, noteColumn).Value = ResultChecks.Note(entry, settings);
             sheet.Cell(row, noteColumn + 1).Value = Path.GetFileName(entry.FilePath);
             ColorRow(sheet.Range(row, 1, row, header.Count), sheet.Cell(row, statusColumn), entry.Status);
+
+            // Порушення доброчесності: фіолетовий напис; рядок справжнього файлу — фіолетовий
+            if (r != null && IntegrityText.HasViolations(r))
+            {
+                sheet.Cell(row, violationsColumn).Style.Font.Bold = true;
+                sheet.Cell(row, violationsColumn).Style.Font.FontColor = ViolationText;
+
+                if (entry.Status == ResultFileStatus.Valid)
+                {
+                    sheet.Range(row, 1, row, header.Count).Style.Fill.BackgroundColor = ViolationBack;
+                }
+            }
+
             row++;
         }
 
@@ -97,13 +117,15 @@ public static class ExcelExport
         sheet.SheetView.FreezeRows(1);
         sheet.Range(1, 1, Math.Max(row - 1, 1), header.Count).SetAutoFilter();
 
-        // Ширина стовпців — під дані (довгі заголовки переносяться на другий рядок); примітка — з переносом рядків
+        // Ширина стовпців — під дані (довгі заголовки переносяться на другий рядок); примітки — з переносом рядків
         sheet.Columns(1, header.Count).AdjustToContents(2, Math.Max(row - 1, 2), 8, 40);
         sheet.Columns(7, 11).Width = 17;            // П1–П5: «відповідностей» — без переносу посеред слова
         sheet.Column(5).Width = Math.Max(sheet.Column(5).Width, 17);   // «проходження» — так само
         sheet.Column(1).Width = 5;
         sheet.Column(3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;   // група — як текст
         sheet.Column(statusColumn).Width += 3;      // стан написано жирним — потрібно трохи більше місця
+        sheet.Column(violationsColumn).Width = ViolationsWidth;
+        sheet.Column(violationsColumn).Style.Alignment.WrapText = true;
         sheet.Column(noteColumn).Width = NoteWidth;
         sheet.Column(noteColumn).Style.Alignment.WrapText = true;
         sheet.Range(2, 1, Math.Max(row - 1, 2), header.Count).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
@@ -112,7 +134,9 @@ public static class ExcelExport
         // і текст на межі ширини обрізається
         for (int r = 2; r < row; r++)
         {
-            FitRowHeight(sheet.Row(r), sheet.Cell(r, noteColumn).GetString(), NoteWidth);
+            int lines = Math.Max(Lines(sheet.Cell(r, noteColumn).GetString(), NoteWidth),
+                                 Lines(sheet.Cell(r, violationsColumn).GetString(), ViolationsWidth));
+            sheet.Row(r).Height = lines * LineHeight + 3;
         }
 
         // Друк: альбомна сторінка, уся таблиця по ширині на одному аркуші
@@ -120,9 +144,84 @@ public static class ExcelExport
         sheet.PageSetup.FitToPages(1, 0);
     }
 
-    // Висота рядка під текст з переносом: рахуємо рядки за словами, з запасом по ширині
+    // ===================== Аркуш «Події» =====================
+
+    // Хронологія режиму доброчесності всіх учнів: по рядку на подію
+    private static void WriteEvents(IXLWorksheet sheet, IReadOnlyList<ResultEntry> entries)
+    {
+        string[] header = { "ПІБ", "Група", "Дата контрольної", "Час події", "Подія", "Питання", "Тривалість, с", "Файл" };
+
+        for (int c = 0; c < header.Length; c++)
+        {
+            sheet.Cell(1, c + 1).Value = header[c];
+        }
+
+        int row = 2;
+
+        foreach (ResultEntry entry in entries)
+        {
+            if (entry.Result?.Integrity is not IntegrityReport report)
+            {
+                continue;
+            }
+
+            foreach (IntegrityEvent e in report.Events.OrderBy(e => e.At))
+            {
+                sheet.Cell(row, 1).Value = entry.Result.StudentName;
+                sheet.Cell(row, 2).Value = entry.Result.Group;
+                sheet.Cell(row, 3).Value = entry.Result.StartedAt.Date;
+                sheet.Cell(row, 3).Style.NumberFormat.Format = "dd.mm.yyyy";
+                sheet.Cell(row, 4).Value = e.At.TimeOfDay;
+                sheet.Cell(row, 4).Style.NumberFormat.Format = "hh:mm:ss";
+                sheet.Cell(row, 5).Value = IntegrityText.Describe(e);
+
+                if (e.Question > 0)
+                {
+                    sheet.Cell(row, 6).Value = e.Question;
+                }
+
+                if (e.Kind is IntegrityEventKind.Exit or IntegrityEventKind.ShortExit)
+                {
+                    sheet.Cell(row, 7).Value = e.Seconds;
+                }
+
+                sheet.Cell(row, 8).Value = Path.GetFileName(entry.FilePath);
+
+                // Порушення — фіолетовим, решта — звичайним
+                if (e.Kind is IntegrityEventKind.Exit or IntegrityEventKind.Screenshot or IntegrityEventKind.SecondCopy
+                    or IntegrityEventKind.EarlyFinish)
+                {
+                    sheet.Cell(row, 5).Style.Font.FontColor = ViolationText;
+                }
+
+                row++;
+            }
+        }
+
+        if (row == 2)
+        {
+            sheet.Cell(2, 1).Value = "Подій режиму доброчесності немає (або контрольні проходили без нього).";
+        }
+
+        IXLRange headerRange = sheet.Range(1, 1, 1, header.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Font.FontColor = HeaderText;
+        headerRange.Style.Fill.BackgroundColor = HeaderBack;
+        sheet.SheetView.FreezeRows(1);
+
+        if (row > 2)
+        {
+            sheet.Range(1, 1, row - 1, header.Length).SetAutoFilter();
+        }
+
+        sheet.Columns(1, header.Length).AdjustToContents(1, Math.Max(row - 1, 1), 8, 80);
+        sheet.PageSetup.PageOrientation = XLPageOrientation.Landscape;
+        sheet.PageSetup.FitToPages(1, 0);
+    }
+
+    // Скільки рядків займе текст з переносом: рахуємо за словами, з запасом по ширині
     // (ширина стовпця в Excel — це кількість цифр «0», а літери в середньому ширші)
-    private static void FitRowHeight(IXLRow row, string text, double columnWidth)
+    private static int Lines(string text, double columnWidth)
     {
         int lineLength = (int)(columnWidth * 0.8);
         int lines = 0;
@@ -144,7 +243,7 @@ public static class ExcelExport
             }
         }
 
-        row.Height = Math.Max(1, lines) * LineHeight + 3;
+        return Math.Max(1, lines);
     }
 
     // Справжній — зелений стан; не вашим ключем — жовтий рядок; змінений — червоний; пошкоджений — сірий
@@ -193,6 +292,11 @@ public static class ExcelExport
             ("⚠ Інший ключ", "Файл підписано ключем, якого немає на цьому комп'ютері (інший банк або підробка)."),
             ("✗ Змінено!", "Файл змінено після збереження; у стовпці «Примітка» — що саме не сходиться."),
             ("⚠ Пошкоджено", "Файл не вдалося прочитати."),
+            ("Порушення", "Режим доброчесності контрольної: зараховані виходи з вікна тесту, короткі виходи (не рахуються), " +
+                          "спроби знімка екрана, друга копія програми, дострокове завершення; а також сигнали — кілька моніторів, " +
+                          $"віддалений доступ, дуже швидкі відповіді (менше {IntegrityText.FastSeconds} с на питання). " +
+                          "Фіолетовий рядок — є порушення. Хронологія — на аркуші «Події»."),
+            ("Завершення", "завершив сам · закрив вікно тесту · скінчився час · достроково: ліміт виходів"),
             ("Ключ вчителя", key != null ? $"№ {key.Id}" : "ще не створено")
         };
 
@@ -205,7 +309,7 @@ public static class ExcelExport
             sheet.Cell(i + 3, 1).Value = lines[i].Name;
             sheet.Cell(i + 3, 1).Style.Font.Bold = true;
             sheet.Cell(i + 3, 2).Value = lines[i].Text;
-            FitRowHeight(sheet.Row(i + 3), lines[i].Text, 100);
+            sheet.Row(i + 3).Height = Lines(lines[i].Text, 100) * LineHeight + 3;
         }
 
         sheet.Column(1).Width = 20;

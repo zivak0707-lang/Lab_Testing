@@ -85,6 +85,9 @@ public partial class TeacherForm : Form
             }
         }
 
+        // Таблиця сама виділяє перший рядок — знімаємо виділення, щоб було видно кольори рядків
+        dgvResults.CurrentCell = null;
+        dgvResults.ClearSelection();
         UpdateView();
     }
 
@@ -142,7 +145,7 @@ public partial class TeacherForm : Form
         {
             // Пошкоджений файл: даних немає — порожні клітинки
             values.Add("—");
-            values.AddRange(Enumerable.Repeat<object>("", 11));   // група … оцінка
+            values.AddRange(Enumerable.Repeat<object>("", 12));   // група … порушення
         }
         else
         {
@@ -156,6 +159,7 @@ public partial class TeacherForm : Form
 
             values.Add(r.TotalScore);
             values.Add(r.Grade);
+            values.Add(IntegrityText.Summary(r));   // режим доброчесності: виходи з вікна тощо
         }
 
         // Стан файлу і примітка: що не так з файлом (довга примітка переноситься на кілька рядків)
@@ -198,6 +202,20 @@ public partial class TeacherForm : Form
                 status.Style.ForeColor = Theme.Warning;
                 break;
         }
+
+        // Порушення доброчесності — фіолетовий напис; якщо сам файл справжній — ще й фіолетовий рядок
+        // (червоний, жовтий і сірий рядки лишаються за станом файлу — він важливіший)
+        if (r != null && IntegrityText.HasViolations(r))
+        {
+            DataGridViewCell violations = row.Cells[colViolations.Index];
+            violations.Style.ForeColor = Theme.Violation;
+            violations.Style.Font = Theme.SectionFont;
+
+            if (entry.Status == ResultFileStatus.Valid)
+            {
+                row.DefaultCellStyle.BackColor = Theme.ViolationBack;
+            }
+        }
     }
 
     // Підказка, кнопки і рядок стану залежать від того, чи є файли
@@ -207,6 +225,7 @@ public partial class TeacherForm : Form
         int otherKey = entries.Count(e => e.Status is ResultFileStatus.DefaultKey or ResultFileStatus.UnknownKey);
         int modified = entries.Count(e => e.Status == ResultFileStatus.Modified);
         int damaged = entries.Count(e => e.Status == ResultFileStatus.Damaged);
+        int violations = entries.Count(e => e.Result != null && IntegrityText.HasViolations(e.Result));
 
         lblDropHint.Visible = entries.Count == 0;
         btnExport.Enabled = entries.Any(e => e.Result != null);
@@ -217,8 +236,8 @@ public partial class TeacherForm : Form
         lblStatus.Text = entries.Count == 0
             ? "Файлів не відкрито"
             : $"Файлів: {entries.Count}   ·   справжніх: {valid}   ·   не вашим ключем: {otherKey}   ·   " +
-              $"змінених: {modified}   ·   пошкоджених: {damaged}";
-        lblStatus.ForeColor = otherKey + modified + damaged > 0 ? Theme.Error : Theme.CardText;
+              $"змінених: {modified}   ·   пошкоджених: {damaged}   ·   з порушеннями: {violations}";
+        lblStatus.ForeColor = otherKey + modified + damaged + violations > 0 ? Theme.Error : Theme.CardText;
     }
 
     private void DgvResults_Resize(object? sender, EventArgs e)
