@@ -9,12 +9,13 @@
     <RootNamespace>Lab_Testing</RootNamespace>
 
     <!-- Відомості про програму (видно у властивостях exe і у вікні «Про програму») -->
-    <Version>0.9.1</Version>
+    <Version>1.0.0</Version>
     <Product>Тестування з програмування на C#</Product>
     <Authors>Сергій Зівак</Authors>
     <Company>Сергій Зівак, група 471</Company>
     <Copyright>© 2026 Сергій Зівак</Copyright>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,9 @@
     <!-- Шаблон банку для вчителя (кнопка «Зберегти шаблон банку») -->
     <None Remove="Data\bank_template.json" />
     <EmbeddedResource Include="Data\bank_template.json" LogicalName="Lab_Testing.bank_template.json" />
+
+    <!-- Іконка програми: у exe (ApplicationIcon вище) і в заголовках вікон (AppInfo.Icon) -->
+    <EmbeddedResource Include="app.ico" LogicalName="Lab_Testing.app.ico" />
   </ItemGroup>
 
   <ItemGroup>

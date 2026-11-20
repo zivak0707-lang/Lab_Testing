@@ -11,6 +11,7 @@ public partial class ResultForm : Form
     public ResultForm(TestResult result, bool showReview, string? filePath = null)
     {
         InitializeComponent();
+        Icon = AppInfo.Icon ?? Icon;   // іконка програми в заголовку і на панелі задач
         boldFont = new Font(rtbReview.Font, FontStyle.Bold);
         this.filePath = filePath;
 

@@ -11,6 +11,7 @@ public partial class BankToolsForm : Form
     public BankToolsForm(QuestionBankData bank, string bankSource)
     {
         InitializeComponent();
+        Icon = AppInfo.Icon ?? Icon;   // іконка програми в заголовку і на панелі задач
 
         lblBankInfo.Text = $"Чинний банк: {bank.Questions.Count} питань ({bankSource}). " +
                            "Для учнів банк шифрується разом з вашим ключем підпису і паролем режиму викладача.";

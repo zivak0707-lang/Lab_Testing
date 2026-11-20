@@ -27,7 +27,8 @@ public static class NameRules
         return string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
-    // Ключ ПІБ для порівняння: однаковий для «Зівак Сергій», «Зiвак  сергій», «Сергій Зівак», «Мар'яна» / «Марʼяна»
+    // Ключ ПІБ для порівняння: однаковий для «Ковалів Сергій», «ковалів  СЕРГІЙ», «Сергій Ковалів», «Мар'яна» / «Марʼяна»
+    // і для ПІБ, де українську літеру підмінено латинською двійницею (і → i, с → c …)
     public static string Key(string name)
     {
         string[] words = Canonical(name).ToLower(Ukrainian).Replace('ґ', 'г').Split(' ', StringSplitOptions.RemoveEmptyEntries);

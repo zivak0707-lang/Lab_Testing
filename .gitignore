@@ -7,3 +7,6 @@ publish/
 .vs/
 *.user
 *.suo
+
+# Знімки для звіту — лише на комп'ютері автора (у репозиторії — docs/images для README)
+docs/screenshots/

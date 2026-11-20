@@ -38,48 +38,53 @@ internal class NamesAndCrashScenario
 
     // ===================== Правила для ПІБ =====================
 
+    // Латинські літери задаємо кодами символів — у тексті програми їх не сплутати з кирилицею
+    private static readonly string LatinI = ((char)0x69).ToString();   // i
+    private static readonly string LatinC = ((char)0x43).ToString();   // C
+    private static readonly string LatinY = ((char)0x79).ToString();   // y
+    private static readonly string LatinK = ((char)0x6B).ToString();   // k
+
     private static void CheckNameRules()
     {
-        string key = NameRules.Key("Зівак Сергій");
-        Expect(NameRules.Key("Зiвак Сергій") == key, "латинська «i» у ключі ПІБ = кирилична «і»");
-        Expect(NameRules.Key("  зівак   СЕРГІЙ ") == key, "регістр і зайві пробіли не важливі");
-        Expect(NameRules.Key("Сергій Зівак") == key, "порядок слів не важливий");
-        Expect(NameRules.Key("Зівок Сергій") != key, "інше прізвище — інший ключ");
-
-        // Латиниця записана кодами, щоб у тексті програми її не сплутати з кирилицею: C (U+0043), y (U+0079), k (U+006B)
-        Expect(NameRules.Key("Cергій Зівак") == key, "латинська «C» = кирилична «С»");
-        Expect(NameRules.Key("Крyк Ігор") == NameRules.Key("Крук Ігор"), "латинська «y» = кирилична «у»");
-        Expect(NameRules.Key("Лаkуста Олег") == NameRules.Key("Лакуста Олег"), "латинська «k» = кирилична «к»");
+        string key = NameRules.Key("Ковалів Сергій");
+        string latinName = $"Ковал{LatinI}в Сергій";   // «i» — латинська
+        Expect(NameRules.Key(latinName) == key, "латинська «i» у ключі ПІБ = кирилична «і»");
+        Expect(NameRules.Key("  ковалів   СЕРГІЙ ") == key, "регістр і зайві пробіли не важливі");
+        Expect(NameRules.Key("Сергій Ковалів") == key, "порядок слів не важливий");
+        Expect(NameRules.Key("Ковалюк Сергій") != key, "інше прізвище — інший ключ");
+        Expect(NameRules.Key($"{LatinC}ергій Ковалів") == key, "латинська «C» = кирилична «С»");
+        Expect(NameRules.Key($"Кр{LatinY}к Ігор") == NameRules.Key("Крук Ігор"), "латинська «y» = кирилична «у»");
+        Expect(NameRules.Key($"Ла{LatinK}уста Олег") == NameRules.Key("Лакуста Олег"), "латинська «k» = кирилична «к»");
         Expect(NameRules.Key("Мар'яна Коваль") == NameRules.Key("Марʼяна Коваль") &&
                NameRules.Key("Мар’яна Коваль") == NameRules.Key("Мар'яна Коваль"), "різні апострофи — однаково");
-        Expect(NameRules.GroupKey("ІПЗ-21") == NameRules.GroupKey("IПЗ - 21") &&
+        Expect(NameRules.GroupKey("ІПЗ-21") == NameRules.GroupKey($"{LatinI.ToUpper()}ПЗ - 21") &&
                NameRules.GroupKey("іпз-21") == NameRules.GroupKey("ІПЗ-21"), "ключ групи");
 
-        string? latin = NameRules.InputProblem("Зiвак Сергій");
-        Expect(latin != null && latin.Contains("«Зiвак»") && latin.Contains("«i»") && latin.Contains("кирилицею"),
+        string? latin = NameRules.InputProblem(latinName);
+        Expect(latin != null && latin.Contains($"«Ковал{LatinI}в»") && latin.Contains($"«{LatinI}»") && latin.Contains("кирилицею"),
             "повідомлення про латинську літеру: " + latin);
-        Expect(NameRules.InputProblem("Зівак Сергій") == null, "кириличне ПІБ проходить");
+        Expect(NameRules.InputProblem("Ковалів Сергій") == null, "кириличне ПІБ проходить");
         Expect(NameRules.InputProblem("Мар’яна Коваль-Петренко") == null, "апостроф і дефіс дозволено");
         Expect(NameRules.InputProblem("Іваненко О. П.") == null, "ініціали з крапками дозволено");
         Expect(NameRules.InputProblem("Іваненко 2")?.Contains("«2»") == true, "цифра в ПІБ — повідомлення");
 
-        Expect(NameRules.GroupProblem("IПЗ-21") != null, "група зі змішаними абетками — повідомлення");
+        Expect(NameRules.GroupProblem($"{LatinI.ToUpper()}ПЗ-21") != null, "група зі змішаними абетками — повідомлення");
         Expect(NameRules.GroupProblem("471") == null && NameRules.GroupProblem("ІПЗ-21") == null, "звичайна група проходить");
 
-        Expect(NameRules.Similar(key, NameRules.Key("Зівак Сергій Петрович")), "схожий ПІБ: без по батькові");
-        Expect(NameRules.Similar(key, NameRules.Key("Зивак Сергій")), "схожий ПІБ: одна літера");
+        Expect(NameRules.Similar(key, NameRules.Key("Ковалів Сергій Петрович")), "схожий ПІБ: без по батькові");
+        Expect(NameRules.Similar(key, NameRules.Key("Ковалив Сергій")), "схожий ПІБ: одна літера");
         Expect(!NameRules.Similar(NameRules.Key("Коваль Марія"), NameRules.Key("Шевчук Олег")), "різні ПІБ — не схожі");
 
-        Console.WriteLine("  ПІБ: латинські двійники, апострофи, регістр, пробіли, порядок слів; заборона латиниці на вході — правильно");
+        Console.WriteLine("  ПІБ: латинські двійники (i, C, y, k…), апострофи, регістр, пробіли, порядок слів; заборона латиниці на вході — правильно");
     }
 
-    // Лічильник на комп'ютері учня: «Зiвак» з латинською «i» — та сама людина
+    // Лічильник на комп'ютері учня: ПІБ з латинською «i» — та сама людина
     private static void CheckCounter()
     {
         Directory.CreateDirectory(ResultFile.BackupFolder);
         List<string> files = new();
 
-        foreach (string name in new[] { "Зівак Сергій", "Зiвак Сергій" })
+        foreach (string name in new[] { "Ковалів Сергій", $"Ковал{LatinI}в Сергій" })
         {
             TestResult r = new()
             {
@@ -92,12 +97,12 @@ internal class NamesAndCrashScenario
             files.Add(file);
         }
 
-        int counted = ResultFile.CountPreviousAttempts("Зівак Сергій", "471");
+        int counted = ResultFile.CountPreviousAttempts("Ковалів Сергій", "471");
         int other = ResultFile.CountPreviousAttempts("Іванов Іван", "471");
         files.ForEach(File.Delete);
 
         Expect(counted == 2 && other == 0, $"лічильник спроб на ПК учня: {counted} і {other}");
-        Console.WriteLine("  Лічильник на ПК учня: «Зiвак» з латинською «i» рахується як той самий учень");
+        Console.WriteLine("  Лічильник на ПК учня: ПІБ з латинською «i» рахується як той самий учень");
     }
 
     // Повторні спроби у вчителя: копія, повтор з латинською літерою, інша група, схожий ПІБ

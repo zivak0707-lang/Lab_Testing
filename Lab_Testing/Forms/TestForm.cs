@@ -30,6 +30,7 @@ public partial class TestForm : Form
     public TestForm(TestSession session)
     {
         InitializeComponent();
+        Icon = AppInfo.Icon ?? Icon;   // іконка програми в заголовку і на панелі задач
         this.session = session;
         lastChecks = new QuestionResult?[session.Questions.Count];
         checkCounts = new int[session.Questions.Count];

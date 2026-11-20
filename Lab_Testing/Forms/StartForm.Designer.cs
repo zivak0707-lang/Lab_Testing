@@ -305,7 +305,7 @@ namespace Lab_Testing
             lblAuthor.Name = "lblAuthor";
             lblAuthor.Size = new Size(250, 15);
             lblAuthor.TabIndex = 0;
-            lblAuthor.Text = "Автор: Сергій Зівак, група 471 · версія 0.1.0";
+            lblAuthor.Text = "Автор: Сергій Зівак, група 471 · версія 1.0.0";
             //
             // StartForm
             //

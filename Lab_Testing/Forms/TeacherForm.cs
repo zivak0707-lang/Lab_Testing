@@ -13,6 +13,7 @@ public partial class TeacherForm : Form
     public TeacherForm(QuestionBankData bank, string bankSource)
     {
         InitializeComponent();
+        Icon = AppInfo.Icon ?? Icon;   // іконка програми в заголовку і на панелі задач
         this.bank = bank;
         this.bankSource = bankSource;
 
