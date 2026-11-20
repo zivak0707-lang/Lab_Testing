@@ -10,3 +10,16 @@ publish/
 
 # Знімки для звіту — лише на комп'ютері автора (у репозиторії — docs/images для README)
 docs/screenshots/
+
+# Дані програми, учнів і вчителя — ніколи не в репозиторій
+*.dat
+*.labkey
+teacher.json
+teacher_keys.json
+Результат_*.json
+Результати_*.xlsx
+Результати_*.csv
+log.txt
+log.old.txt
+results/
+*.pdb
