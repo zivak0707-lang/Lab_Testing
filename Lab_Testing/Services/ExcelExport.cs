@@ -41,6 +41,7 @@ public static class ExcelExport
             sheet.Cell(1, c + 1).Value = header[c];
         }
 
+        Dictionary<ResultEntry, AttemptInfo> attempts = AttemptGroups.Analyze(entries);   // повторні спроби (як у таблиці вчителя)
         int violationsColumn = header.IndexOf("Порушення") + 1;
         int noteColumn = header.IndexOf("Примітка") + 1;
         int statusColumn = header.IndexOf("Файл справжній") + 1;
@@ -63,7 +64,16 @@ public static class ExcelExport
                 sheet.Cell(row, col++).Style.NumberFormat.Format = "dd.mm.yyyy hh:mm";
                 sheet.Cell(row, col).Value = r.Duration;
                 sheet.Cell(row, col++).Style.NumberFormat.Format = "[h]:mm:ss";
-                sheet.Cell(row, col++).Value = r.AttemptNumber;
+                attempts.TryGetValue(entry, out AttemptInfo? attempt);
+                sheet.Cell(row, col).Value = attempt is { Number: > 0 } ? attempt.Number : r.AttemptNumber;
+
+                if (attempt is { Number: > 1 })
+                {
+                    sheet.Cell(row, col).Style.Font.Bold = true;
+                    sheet.Cell(row, col).Style.Font.FontColor = XLColor.FromArgb(191, 96, 0);
+                }
+
+                col++;
 
                 for (int i = 0; i < 5; i++)
                 {
@@ -87,7 +97,7 @@ public static class ExcelExport
             }
 
             sheet.Cell(row, statusColumn).Value = ResultChecks.StatusText(entry.Status);
-            sheet.Cell(row, noteColumn).Value = ResultChecks.Note(entry, settings);
+            sheet.Cell(row, noteColumn).Value = ResultChecks.FullNote(entry, settings, attempts.GetValueOrDefault(entry));
             sheet.Cell(row, noteColumn + 1).Value = Path.GetFileName(entry.FilePath);
             ColorRow(sheet.Range(row, 1, row, header.Count), sheet.Cell(row, statusColumn), entry.Status);
 
@@ -296,7 +306,9 @@ public static class ExcelExport
                           "спроби знімка екрана, друга копія програми, дострокове завершення; а також сигнали — кілька моніторів, " +
                           $"віддалений доступ, дуже швидкі відповіді (менше {IntegrityText.FastSeconds} с на питання). " +
                           "Фіолетовий рядок — є порушення. Хронологія — на аркуші «Події»."),
-            ("Завершення", "завершив сам · закрив вікно тесту · скінчився час · достроково: ліміт виходів"),
+            ("Завершення", "завершив сам · закрив вікно тесту · скінчився час · достроково: ліміт виходів · через помилку програми"),
+            ("Спроба", "Номер спроби цього учня серед файлів у таблиці (за ПІБ і групою; латинські двійники літер, апострофи, " +
+                       "регістр і зайві пробіли не важливі). Лічильник з комп'ютера учня — у «Примітці», якщо він інший."),
             ("Ключ вчителя", key != null ? $"№ {key.Id}" : "ще не створено")
         };
 

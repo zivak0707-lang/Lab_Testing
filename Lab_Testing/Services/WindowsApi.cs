@@ -56,6 +56,12 @@ internal static class WindowsApi
         SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, KeepPlace);
     }
 
+    // Більше не «поверх усіх» (наприклад, після збою програми — щоб повідомлення і решта Windows були видні)
+    public static void LeaveTopMost(IntPtr window)
+    {
+        SetWindowPos(window, HWND_NOTOPMOST, 0, 0, 0, 0, KeepPlace);
+    }
+
     // Учень перейшов в іншу програму: тест перестає бути «поверх усіх» і стає одразу під її вікном,
     // тож ця програма видна і працює як звичайно (Alt+Tab, Win+R, Win+D). Фокус не забираємо
     public static void StepAside(IntPtr window)

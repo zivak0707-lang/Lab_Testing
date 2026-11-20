@@ -345,6 +345,7 @@ namespace Lab_Testing
             // colAttempt
             //
             colAttempt.HeaderText = "Спроба";
+            colAttempt.ToolTipText = "Номер спроби цього учня серед відкритих файлів (за ПІБ і групою). Якщо лічильник на комп'ютері учня інший — це видно в «Примітці»";
             colAttempt.Name = "colAttempt";
             colAttempt.ReadOnly = true;
             colAttempt.Width = 56;

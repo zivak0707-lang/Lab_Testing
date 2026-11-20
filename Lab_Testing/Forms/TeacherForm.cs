@@ -85,10 +85,38 @@ public partial class TeacherForm : Form
             }
         }
 
+        // Нові файли можуть бути повторними спробами вже відкритих — перераховуємо для всіх рядків
+        RefreshAttempts();
+
         // Таблиця сама виділяє перший рядок — знімаємо виділення, щоб було видно кольори рядків
         dgvResults.CurrentCell = null;
         dgvResults.ClearSelection();
         UpdateView();
+    }
+
+    // Повторні спроби: «Спроба» — номер спроби цього учня серед відкритих файлів (за ПІБ і групою),
+    // а не лічильник з комп'ютера учня; «Примітка» — стан файлу і що помічено про спроби й написання ПІБ
+    private void RefreshAttempts()
+    {
+        Dictionary<ResultEntry, AttemptInfo> attempts = AttemptGroups.Analyze(entries);
+
+        foreach (DataGridViewRow row in dgvResults.Rows)
+        {
+            ResultEntry entry = (ResultEntry)row.Tag!;
+            attempts.TryGetValue(entry, out AttemptInfo? info);
+            row.Cells[colNote.Index].Value = ResultChecks.FullNote(entry, bank.Settings, info);
+
+            if (info is { Number: > 0 })
+            {
+                row.Cells[colAttempt.Index].Value = info.Number;
+            }
+
+            // Повторна спроба — жирним помаранчевим
+            bool repeat = info is { Number: > 1 };
+            DataGridViewCell attempt = row.Cells[colAttempt.Index];
+            attempt.Style.ForeColor = repeat ? Theme.Warning : Color.Empty;
+            attempt.Style.Font = repeat ? Theme.SectionFont : null;
+        }
     }
 
     private void AddFile(string path, bool fromFolder)
@@ -226,6 +254,7 @@ public partial class TeacherForm : Form
         int modified = entries.Count(e => e.Status == ResultFileStatus.Modified);
         int damaged = entries.Count(e => e.Status == ResultFileStatus.Damaged);
         int violations = entries.Count(e => e.Result != null && IntegrityText.HasViolations(e.Result));
+        int repeats = AttemptGroups.Analyze(entries).Values.Count(a => a.Number > 1);
 
         lblDropHint.Visible = entries.Count == 0;
         btnExport.Enabled = entries.Any(e => e.Result != null);
@@ -236,7 +265,7 @@ public partial class TeacherForm : Form
         lblStatus.Text = entries.Count == 0
             ? "Файлів не відкрито"
             : $"Файлів: {entries.Count}   ·   справжніх: {valid}   ·   не вашим ключем: {otherKey}   ·   " +
-              $"змінених: {modified}   ·   пошкоджених: {damaged}   ·   з порушеннями: {violations}";
+              $"змінених: {modified}   ·   пошкоджених: {damaged}   ·   з порушеннями: {violations}   ·   повторних спроб: {repeats}";
         lblStatus.ForeColor = otherKey + modified + damaged + violations > 0 ? Theme.Error : Theme.CardText;
     }
 

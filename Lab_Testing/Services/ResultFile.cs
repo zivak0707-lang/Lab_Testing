@@ -43,8 +43,12 @@ public static class ResultFile
     private static readonly JsonSerializerOptions CanonicalOptions = new(QuestionBank.JsonOptions) { WriteIndented = false };
 
     // Тека на робочому столі. Шлях дає система, тому він правильний і коли робочий стіл у хмарній теці
+    // (змінна середовища LAB_TESTING_RESULTS задає іншу теку — так робить утиліта знімків,
+    // щоб не записувати файли на робочий стіл комп'ютера, де її запускають)
     public static string DesktopFolder =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), FolderName);
+        Environment.GetEnvironmentVariable("LAB_TESTING_RESULTS") is { Length: > 0 } custom
+            ? custom
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), FolderName);
 
     // Запасна тека — якщо на робочий стіл записати не вдалося
     public static string DocumentsFolder =>
@@ -233,8 +237,8 @@ public static class ResultFile
             try
             {
                 if (Check(File.ReadAllText(file), out TestResult? r) != ResultFileStatus.Damaged && r != null &&
-                    string.Equals(r.StudentName, studentName, StringComparison.CurrentCultureIgnoreCase) &&
-                    string.Equals(r.Group, group, StringComparison.CurrentCultureIgnoreCase))
+                    NameRules.Key(r.StudentName) == NameRules.Key(studentName) &&
+                    NameRules.GroupKey(r.Group) == NameRules.GroupKey(group))
                 {
                     count++;
                 }

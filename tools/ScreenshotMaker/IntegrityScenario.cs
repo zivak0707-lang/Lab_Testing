@@ -390,14 +390,17 @@ internal class IntegrityScenario
     // Файли попередньої версії (без режиму доброчесності) з робочого столу мають і далі відкриватися
     private static void CheckOldFiles()
     {
-        if (!Directory.Exists(ResultFile.DesktopFolder))
+        // Справжній робочий стіл (утиліта перенаправляє ResultFile.DesktopFolder у тимчасову теку)
+        string desktop = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ResultFile.FolderName);
+
+        if (!Directory.Exists(desktop))
         {
             return;
         }
 
         int count = 0;
 
-        foreach (string file in Directory.EnumerateFiles(ResultFile.DesktopFolder, "*.json"))
+        foreach (string file in Directory.EnumerateFiles(desktop, "*.json"))
         {
             string json = File.ReadAllText(file);
 

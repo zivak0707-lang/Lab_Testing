@@ -82,8 +82,8 @@ public partial class StartForm : Form
 
     private void BtnStart_Click(object? sender, EventArgs e)
     {
-        string name = NormalizeSpaces(txtName.Text);
-        string group = NormalizeSpaces(txtGroup.Text);
+        string name = NameRules.NormalizeSpaces(txtName.Text);
+        string group = NameRules.NormalizeSpaces(txtGroup.Text);
 
         // Перевірка введених даних
         if (name.Length == 0)
@@ -103,6 +103,25 @@ public partial class StartForm : Form
         if (group.Length == 0)
         {
             ShowWarning("Введіть назву групи.");
+            txtGroup.Focus();
+            return;
+        }
+
+        // ПІБ — лише кирилицею: латинська «i» замість «і» робила б з учня «нову людину»
+        string? nameProblem = NameRules.InputProblem(name);
+
+        if (nameProblem != null)
+        {
+            ShowWarning(nameProblem);
+            txtName.Focus();
+            return;
+        }
+
+        string? groupProblem = NameRules.GroupProblem(group);
+
+        if (groupProblem != null)
+        {
+            ShowWarning(groupProblem);
             txtGroup.Focus();
             return;
         }
@@ -130,21 +149,31 @@ public partial class StartForm : Form
             }
         }
 
-        // Ховаємо стартову сторінку на час тесту і повертаємо її після закриття вікна тесту
-        Hide();
         TestResult? result;
+        string? savedPath;   // файл, який вікно тесту вже зберегло само (після збою програми)
 
+        // Ховаємо стартову сторінку на час тесту. Вікно тесту створюємо до Hide(): якщо воно не створиться,
+        // стартова сторінка не зникне
         using (TestForm test = new(session))
         {
-            test.ShowDialog();
-            result = test.Result;   // null — учень вийшов з «Навчання», не завершивши тест
-        }
+            Hide();
 
-        // Стартову сторінку повертаємо одразу: повідомлення про збереження файлу і сторінка результату
-        // мають видимого власника. Інакше програма лишається без вікон, Windows віддає фокус іншій програмі,
-        // і повідомлення відкривається десь позаду (кнопки на панелі задач у нього немає)
-        Show();
-        Activate();
+            try
+            {
+                test.ShowDialog();
+            }
+            finally
+            {
+                // Стартову сторінку повертаємо одразу (навіть після збою): повідомлення про збереження файлу
+                // і сторінка результату мають видимого власника. Інакше програма лишається без вікон,
+                // Windows віддає фокус іншій програмі, і повідомлення відкривається десь позаду
+                Show();
+                Activate();
+            }
+
+            result = test.Result;   // null — учень вийшов з «Навчання», не завершивши тест
+            savedPath = test.SavedPath;
+        }
 
         if (result != null)
         {
@@ -157,7 +186,8 @@ public partial class StartForm : Form
                 result.RemoveCorrectAnswers();
             }
 
-            string? filePath = mode == TestMode.Control ? SaveResultFile(result) : null;
+            // Після збою програми файл уже збережено (і учневі показано, де він) — вдруге не зберігаємо
+            string? filePath = mode == TestMode.Control ? savedPath ?? SaveResultFile(result) : null;
 
             using ResultForm resultForm = new(result, showReview, filePath);
             resultForm.ShowDialog(this);
@@ -203,6 +233,7 @@ public partial class StartForm : Form
         try
         {
             string path = ResultFile.Save(result);
+            AppLog.Info("контрольна", "файл результату збережено: " + Path.GetFileName(path));
 
             Dialogs.Info(this,
                 $"Результат збережено у файл:\n\n{path}\n\n" +
@@ -214,6 +245,7 @@ public partial class StartForm : Form
         }
         catch (IOException ex)
         {
+            AppLog.Error("збереження файлу результату", ex);
             Dialogs.Error(this, "Не вдалося зберегти файл результату.\n\n" + ex.Message +
                                 "\n\nПокажіть цей результат викладачеві на екрані.",
                 "Помилка збереження");
@@ -251,12 +283,6 @@ public partial class StartForm : Form
     }
 
     // ===================== Допоміжне =====================
-
-    // Прибирає зайві пробіли: "  Іваненко   Олена " -> "Іваненко Олена"
-    private static string NormalizeSpaces(string text)
-    {
-        return string.Join(' ', text.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-    }
 
     private void ShowWarning(string message)
     {

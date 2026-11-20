@@ -6,7 +6,8 @@ public enum FinishReason
     Student,       // учень натиснув «Завершити контрольну»
     WindowClosed,  // учень закрив вікно тесту (✕ або Alt+F4)
     TimeUp,        // скінчився час
-    ExitLimit      // достроково: вичерпано дозволену кількість виходів з вікна
+    ExitLimit,     // достроково: вичерпано дозволену кількість виходів з вікна
+    ProgramError   // через непередбачену помилку програми (результат збережено)
 }
 
 // Що сталося під час контрольної
@@ -19,7 +20,8 @@ public enum IntegrityEventKind
     Monitors,        // змінилася кількість моніторів
     RemoteSession,   // підключення через віддалений робочий стіл
     SecondCopy,      // спроба відкрити ще одну копію програми
-    EarlyFinish      // контрольну завершено достроково через виходи
+    EarlyFinish,     // контрольну завершено достроково через виходи
+    ProgramError     // непередбачена помилка програми — контрольну завершено, результат збережено
 }
 
 // Одна подія: коли, що, на якому питанні і (для виходів) скільки тривала
@@ -81,6 +83,9 @@ public class IntegrityMonitor
     }
 
     public IntegritySettings Settings { get; }
+
+    // Викликається для кожної записаної події (вікно тесту пише її в журнал діагностики)
+    public Action<IntegrityEvent>? EventRecorded { get; set; }
     public IntegrityReport Report { get; }
 
     // Учень зараз поза вікном тесту
@@ -94,7 +99,9 @@ public class IntegrityMonitor
 
     public void Add(IntegrityEventKind kind, DateTime at, int question = 0, string details = "", int seconds = 0)
     {
-        Report.Events.Add(new IntegrityEvent { At = Trim(at), Kind = kind, Question = question, Details = details, Seconds = seconds });
+        IntegrityEvent e = new() { At = Trim(at), Kind = kind, Question = question, Details = details, Seconds = seconds };
+        Report.Events.Add(e);
+        EventRecorded?.Invoke(e);
     }
 
     // Вікно тесту втратило фокус: активною стала інша програма
@@ -136,6 +143,7 @@ public class IntegrityMonitor
         };
 
         Report.Events.Add(exit);
+        EventRecorded?.Invoke(exit);
         Report.AwaySeconds += exit.Seconds;
 
         if (isShort)

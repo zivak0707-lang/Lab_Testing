@@ -21,6 +21,7 @@ public static class CsvExport
         AppendRow(sb, header, separator);
 
         int number = 1;
+        Dictionary<ResultEntry, AttemptInfo> attempts = AttemptGroups.Analyze(entries.ToList());   // повторні спроби
 
         foreach (ResultEntry entry in entries)
         {
@@ -38,7 +39,7 @@ public static class CsvExport
                 row.Add(r.Group);
                 row.Add(r.FinishedAt.ToString("dd.MM.yyyy HH:mm", culture));
                 row.Add(Grading.FormatDuration(r.Duration));
-                row.Add(r.AttemptNumber.ToString());
+                row.Add((attempts.GetValueOrDefault(entry) is { Number: > 0 } attempt ? attempt.Number : r.AttemptNumber).ToString());
                 row.AddRange(r.Questions.Select(q => q.Score.ToString("0.#", culture)));
                 row.Add(r.TotalScore.ToString("0.#", culture));
                 row.Add(r.MaxScore.ToString("0.#", culture));
@@ -50,7 +51,7 @@ public static class CsvExport
             }
 
             row.Add(ResultChecks.StatusText(entry.Status));
-            row.Add(ResultChecks.Note(entry, settings));
+            row.Add(ResultChecks.FullNote(entry, settings, attempts.GetValueOrDefault(entry)));
             row.Add(Path.GetFileName(entry.FilePath));
             AppendRow(sb, row, separator);
         }

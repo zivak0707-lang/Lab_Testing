@@ -82,6 +82,7 @@ internal class Scenarios
         {
             await Stage7Async();
             await new IntegrityScenario(ui).RunAsync();
+            await new NamesAndCrashScenario(ui).RunAsync();
         }
     }
 

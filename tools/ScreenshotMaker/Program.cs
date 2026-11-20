@@ -21,10 +21,21 @@ internal static class Program
 
         Environment.SetEnvironmentVariable("LAB_TESTING_DATA", dataFolder);
 
-        // Ті самі налаштування WinForms, що й у Lab_Testing (ApplicationConfiguration)
+        // Файли результатів (зокрема збережені після збою) — теж у тимчасову теку, а не на ваш робочий стіл
+        string resultsFolder = Path.Combine(Path.GetTempPath(), "Lab_Testing_результати_утиліти");
+
+        if (Directory.Exists(resultsFolder))
+        {
+            Directory.Delete(resultsFolder, true);
+        }
+
+        Environment.SetEnvironmentVariable("LAB_TESTING_RESULTS", resultsFolder);
+
+        // Ті самі налаштування WinForms, що й у Lab_Testing (ApplicationConfiguration), і той самий обробник збоїв
         Application.SetHighDpiMode(HighDpiMode.SystemAware);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        Lab_Testing.CrashHandler.Install();
 
         bool dragTest = args.Contains("--drag-test");
         bool diagTopmost = args.Contains("--diag-topmost");

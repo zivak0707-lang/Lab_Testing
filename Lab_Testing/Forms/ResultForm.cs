@@ -21,6 +21,7 @@ public partial class ResultForm : Form
                           {
                               FinishReason.TimeUp => "  ·  завершено, бо скінчився час",
                               FinishReason.ExitLimit => "  ·  завершено достроково: ліміт виходів з вікна",
+                              FinishReason.ProgramError => "  ·  завершено через помилку програми",
                               _ => ""
                           };
 

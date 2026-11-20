@@ -9,6 +9,9 @@ internal static class Program
         // Стандартні налаштування WinForms (візуальні стилі, DPI) з файлу проєкту
         ApplicationConfiguration.Initialize();
 
+        // Непередбачені помилки — у журнал і зрозуміле повідомлення (під час контрольної — зі збереженням відповідей)
+        CrashHandler.Install();
+
         // Під час контрольної ще одну копію програми не відкриваємо: у ній можна було б
         // перевіряти відповіді в «Навчанні». Копія з контрольною запише цю спробу
         if (InstanceGuard.ControlIsRunning)
@@ -35,6 +38,7 @@ internal static class Program
             return;
         }
 
+        AppLog.Info("запуск", $"версія {AppInfo.Version}; банк: {bankSource}");
         InstanceGuard.Register();
 
         try

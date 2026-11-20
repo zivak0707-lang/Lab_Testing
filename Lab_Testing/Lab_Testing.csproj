@@ -9,7 +9,7 @@
     <RootNamespace>Lab_Testing</RootNamespace>
 
     <!-- Відомості про програму (видно у властивостях exe і у вікні «Про програму») -->
-    <Version>0.9.0</Version>
+    <Version>0.9.1</Version>
     <Product>Тестування з програмування на C#</Product>
     <Authors>Сергій Зівак</Authors>
     <Company>Сергій Зівак, група 471</Company>

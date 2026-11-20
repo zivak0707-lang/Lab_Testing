@@ -67,7 +67,11 @@ public partial class TestForm : Form
         // Режим доброчесності: вікно на весь екран поверх інших (до створення вікна — так Windows не перестворює його)
         if (!training && session.Settings.Integrity.Enabled)
         {
-            integrity = new IntegrityMonitor(session.Settings.Integrity);
+            integrity = new IntegrityMonitor(session.Settings.Integrity)
+            {
+                // Кожна подія доброчесності — і в журнал діагностики
+                EventRecorded = e => AppLog.Info("доброчесність", IntegrityText.Describe(e))
+            };
 
             if (session.RulesAcceptedAt is DateTime accepted)
             {
@@ -80,6 +84,12 @@ public partial class TestForm : Form
 
     // Підсумок тесту (з'являється після завершення; null — учень вийшов, не завершивши)
     public TestResult? Result { get; private set; }
+
+    // Файл результату, уже збережений самим вікном тесту (після збою програми); null — зберігає стартова сторінка
+    public string? SavedPath { get; private set; }
+
+    // Контрольна, яка зараз іде (для обробки збою програми, див. CrashHandler); null — контрольна не йде
+    public static TestForm? RunningControl { get; private set; }
 
     // Що записав режим доброчесності (null — вимкнено); для самоперевірок
     public IntegrityReport? IntegrityReport => integrity?.Report;
@@ -451,7 +461,7 @@ public partial class TestForm : Form
         integrity?.Close(now);
         monitoring = false;
 
-        List<QuestionResult> results = views.Select(v => v.Evaluate(highlight: false)).ToList();
+        List<QuestionResult> results = views.Select(EvaluateSafely).ToList();
 
         for (int i = 0; i < results.Count; i++)
         {
@@ -470,6 +480,34 @@ public partial class TestForm : Form
 
         Result = TestResult.Create(session, results, now, reason, integrity?.Report);
         finished = true;
+
+        if (IsControl)
+        {
+            AppLog.Info("контрольна", $"завершено ({IntegrityText.FinishText(Result)}): " +
+                                      $"{Grading.Format(Result.TotalScore)} з {Grading.Format(Result.MaxScore)} балів");
+        }
+    }
+
+    // Перевірка одного питання. Якщо вона сама зламалась — питання отримує 0 балів, а решта рахується як звичайно
+    private QuestionResult EvaluateSafely(QuestionView view)
+    {
+        try
+        {
+            return view.Evaluate(highlight: false);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error($"перевірка питання №{view.Question.Id}", ex);
+
+            return new QuestionResult
+            {
+                QuestionId = view.Question.Id,
+                Type = view.Question.Type,
+                Title = view.Question.Title,
+                Topic = view.Question.Topic,
+                Summary = "не вдалося перевірити (помилка програми)"
+            };
+        }
     }
 
     // Час на поточному питанні: додаємо відрізок від questionSince до now (лише коли учень у вікні)
@@ -521,6 +559,11 @@ public partial class TestForm : Form
         controlTimer.Stop();
         StopIntegrity();
 
+        if (RunningControl == this)
+        {
+            RunningControl = null;
+        }
+
         foreach (QuestionView view in views)
         {
             view.Dispose();
@@ -564,8 +607,17 @@ public partial class TestForm : Form
     // Вікно показано: починаємо відстежувати виходи, знімки екрана, монітори і другу копію програми
     private void TestForm_Shown(object? sender, EventArgs e)
     {
+        if (!IsControl)
+        {
+            return;
+        }
+
+        RunningControl = this;
+        KeyPreview = true;   // щоб помітити клавіші (Print Screen), хоч би на якій картці був фокус
+
         if (integrity == null)
         {
+            AppLog.Info("контрольна", $"почалась: спроба {session.AttemptId.ToString()[..8]}, режим доброчесності вимкнено");
             return;
         }
 
@@ -574,7 +626,7 @@ public partial class TestForm : Form
         report.RemoteSession = WindowsApi.IsRemoteSession;
         report.CaptureProtection = integrity.Settings.HideFromCapture ? WindowsApi.HideFromCapture(Handle) : "вимкнено";
 
-        KeyPreview = true;   // щоб помітити клавішу Print Screen, хоч би на якій картці був фокус
+        AppLog.Info("контрольна", $"почалась: спроба {session.AttemptId.ToString()[..8]}; " + IntegrityText.SettingsText(report));
         WindowsApi.WatchClipboard(Handle, true);
         SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
         SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
@@ -749,6 +801,100 @@ public partial class TestForm : Form
         {
             integrity!.AddScreenshot(DateTime.Now, currentIndex + 1, "клавіша Print Screen");
             ShowNotice("Спробу зробити знімок екрана записано.");
+        }
+
+#if DEBUG
+        // Лише у версії для розробки (Debug): перевірка аварійного завершення — Ctrl+Shift+F12.
+        // В опублікованому exe (Release) цього рядка немає
+        if (IsControl && !finished && e.Control && e.Shift && e.KeyCode == Keys.F12)
+        {
+            throw new InvalidOperationException("Перевірка аварійного завершення (Ctrl+Shift+F12, лише у версії Debug)");
+        }
+#endif
+    }
+
+    // ===================== Збій програми під час контрольної =====================
+
+    // Непередбачена помилка (викликає CrashHandler): контрольна завершується з поточними відповідями,
+    // файл зберігається одразу, режим «на весь екран / поверх усіх» знімається, учень бачить зрозуміле повідомлення
+    public void EmergencyFinish()
+    {
+        // Закриваємо відкриті діалоги тесту (запитання, попередження)
+        foreach (Form owned in OwnedForms)
+        {
+            Try(owned.Close);
+        }
+
+        Try(StopIntegrity);
+        Try(LeaveFullScreen);
+
+        if (!finished)
+        {
+            Try(() => integrity?.Add(IntegrityEventKind.ProgramError, DateTime.Now, currentIndex + 1));
+            Try(() => PrepareResult(FinishReason.ProgramError));
+        }
+
+        if (Result != null)
+        {
+            // Якщо викладач вимкнув розбір — правильних відповідей у файлі не має бути (як і в звичайному завершенні)
+            if (!session.Settings.ShowReviewAfterControl)
+            {
+                Try(Result.RemoveCorrectAnswers);
+            }
+
+            Try(() =>
+            {
+                SavedPath = ResultFile.Save(Result);
+                AppLog.Info("контрольна", "після збою файл результату збережено: " + Path.GetFileName(SavedPath));
+            });
+        }
+
+        finished = true;   // далі вікно лише показує повідомлення і закривається (без «поверх усіх» і обліку виходів)
+
+        string saved = SavedPath != null
+            ? $"Ваші відповіді збережено у файл:\n{SavedPath}\n\nНадішліть його вчителю, як завжди."
+            : "Файл результату зберегти не вдалося — покажіть цей екран і сторінку результату вчителю.";
+
+        Dialogs.Error(this,
+            "Сталася непередбачена помилка програми, тому контрольну завершено.\n\n" + saved + "\n\n" +
+            "У файлі результату буде позначено, що контрольну завершено через помилку програми.",
+            "Помилка програми");
+
+        DialogResult = DialogResult.OK;
+        Close();
+    }
+
+    // Звичайне вікно замість «на весь екран / поверх усіх» (щоб повідомлення і решта Windows були видні)
+    private void LeaveFullScreen()
+    {
+        WindowsApi.LeaveTopMost(Handle);
+
+        if (integrity == null)
+        {
+            return;
+        }
+
+        pnlExamBar.Visible = false;
+        Padding = Padding.Empty;
+        BackColor = Theme.PageBack;
+        FormBorderStyle = FormBorderStyle.Sizable;
+
+        Rectangle screen = Screen.FromControl(this).WorkingArea;
+        Size size = new(Math.Min(LogicalToDeviceUnits(1180), screen.Width), Math.Min(LogicalToDeviceUnits(680), screen.Height));
+        Bounds = new Rectangle(screen.X + (screen.Width - size.Width) / 2, screen.Y + (screen.Height - size.Height) / 2,
+            size.Width, size.Height);
+    }
+
+    // Крок аварійного завершення, який сам може зламатися: записуємо і йдемо далі
+    private static void Try(Action step)
+    {
+        try
+        {
+            step();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("аварійне завершення", ex);
         }
     }
 

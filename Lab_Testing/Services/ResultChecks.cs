@@ -33,6 +33,12 @@ public static class ResultChecks
         };
     }
 
+    // Повна примітка для таблиці, Excel і CSV: стан файлу + повторні спроби й написання ПІБ
+    public static string FullNote(ResultEntry entry, BankSettings settings, AttemptInfo? attempts)
+    {
+        return Join(Note(entry, settings), AttemptGroups.Note(attempts));
+    }
+
     // Примітка для вчителя до файлу (порожня — файл справжній)
     public static string Note(ResultEntry entry, BankSettings settings)
     {
@@ -119,6 +125,6 @@ public static class ResultChecks
 
     private static string Join(string first, string second)
     {
-        return second.Length == 0 ? first : first + " " + second;
+        return second.Length == 0 ? first : first.Length == 0 ? second : first + " " + second;
     }
 }

@@ -122,6 +122,7 @@ public static class IntegrityText
             FinishReason.TimeUp => "скінчився час",
             FinishReason.ExitLimit => "достроково: ліміт виходів",
             FinishReason.WindowClosed => "закрив вікно тесту",
+            FinishReason.ProgramError => "через помилку програми",
             _ => "завершив сам"
         };
     }
@@ -159,6 +160,7 @@ public static class IntegrityText
             IntegrityEventKind.RemoteSession => $"віддалений доступ{details}",
             IntegrityEventKind.SecondCopy => "спроба відкрити ще одну копію програми (не відкрилася)",
             IntegrityEventKind.EarlyFinish => $"контрольну завершено достроково{details}",
+            IntegrityEventKind.ProgramError => "непередбачена помилка програми — контрольну завершено, відповіді збережено",
             _ => e.Kind.ToString()
         };
     }
